@@ -2,6 +2,11 @@
 @import "../styles/talavera.css";
 
 @theme inline {
+  --color-bg-primary: var(--talavera-bg-primary);
+  --color-bg-card: var(--talavera-bg-card);
+  --color-bg-card-elevated: var(--talavera-bg-card-elevated);
+  --color-bg-surface: var(--talavera-bg-surface);
+
   --color-azul: var(--talavera-azul);
   --color-azul-light: var(--talavera-azul-light);
   --color-amarillo: var(--talavera-amarillo);
@@ -17,6 +22,10 @@
   --color-energy-medium: var(--energy-medium);
   --color-energy-high: var(--energy-high);
 
+  --color-ring-green: var(--ring-green);
+  --color-ring-yellow: var(--ring-yellow);
+  --color-ring-blue: var(--ring-blue);
+
   --font-heading: var(--font-heading);
   --font-body: var(--font-body);
 
@@ -27,10 +36,11 @@
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
 }
 
 body {
-  background: var(--talavera-crema);
+  background: var(--talavera-bg-primary);
   color: var(--talavera-negro);
   font-family: var(--font-body);
 }

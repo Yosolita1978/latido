@@ -9,13 +9,30 @@ interface TimeBlockProps {
   energyLevel: "low" | "medium" | "high";
   slotType: string;
   completed: boolean;
+  estimatedMinutes?: number;
+  featured?: boolean;
   onToggle: (taskId: string) => void;
 }
 
-const energyColors = {
-  low: "bg-energy-low",
-  medium: "bg-energy-medium",
-  high: "bg-energy-high",
+const energyDotColors = {
+  low: "bg-azul-light",
+  medium: "bg-amarillo",
+  high: "bg-rojo",
+};
+
+const energyIcons = {
+  low: null,
+  medium: "⚡",
+  high: "⚡",
+};
+
+const slotLabels: Record<string, string> = {
+  deep_work: "Deep work",
+  admin: "Admin",
+  client_work: "Client",
+  learning: "Learning",
+  personal: "Personal",
+  maintenance: "Maintenance",
 };
 
 export function TimeBlock({
@@ -27,45 +44,56 @@ export function TimeBlock({
   energyLevel,
   slotType,
   completed,
+  estimatedMinutes,
+  featured = false,
   onToggle,
 }: TimeBlockProps) {
   if (slotType === "break") {
     return (
-      <div className="flex items-center gap-[var(--space-4)] p-[var(--space-4)] border-2 border-dashed border-gris/30 rounded-[var(--radius-md)]">
-        <span className="text-sm text-gris">{startTime} - {endTime}</span>
-        <span className="text-gris italic">Descanso</span>
+      <div className="flex items-center justify-center py-[var(--space-2)]">
+        <span className="text-xs text-gris">— Descanso {startTime} - {endTime} —</span>
       </div>
     );
   }
 
+  const label = slotLabels[slotType] ?? slotType;
+  const minutes = estimatedMinutes ?? "";
+
   return (
-    <div className="flex items-center gap-[var(--space-4)] bg-blanco rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] overflow-hidden">
-      <div className={`w-1 self-stretch ${energyColors[energyLevel]}`} />
-      <div className="flex-1 py-[var(--space-3)] pr-[var(--space-2)]">
-        <span className="text-sm text-gris">{startTime} - {endTime}</span>
-        <p className={`text-base text-negro ${completed ? "line-through opacity-50" : ""}`}>
+    <button
+      onClick={() => onToggle(taskId)}
+      className={`
+        w-full text-left rounded-[var(--radius-lg)] p-[var(--space-4)]
+        flex items-center gap-[var(--space-3)] transition-all duration-200
+        ${featured
+          ? "bg-bg-card-elevated shadow-[var(--shadow-md)]"
+          : "bg-bg-card"
+        }
+        ${completed ? "opacity-50" : ""}
+      `}
+    >
+      {/* Energy dot */}
+      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${energyDotColors[energyLevel]}`} />
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <p className={`text-base text-blanco font-medium ${completed ? "line-through" : ""}`}>
           {title}
         </p>
-        {projectName && <p className="text-sm text-gris">{projectName}</p>}
+        <p className="text-xs text-gris mt-0.5">
+          {projectName ?? label}
+          {minutes ? ` · ${minutes} min` : ""}
+        </p>
       </div>
-      <button
-        onClick={() => onToggle(taskId)}
-        className={`
-          w-8 h-8 mr-[var(--space-4)] rounded-full border-2 flex-shrink-0
-          flex items-center justify-center transition-colors duration-150
-          ${completed
-            ? "bg-verde border-verde text-blanco"
-            : "border-azul bg-transparent hover:bg-azul/10"
-          }
-        `}
-        aria-label={completed ? "Marcar como pendiente" : "Marcar como completada"}
-      >
-        {completed && (
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M2 7L5.5 10.5L12 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-      </button>
-    </div>
+
+      {/* Right icon */}
+      <div className="flex-shrink-0 text-lg">
+        {completed ? (
+          <span className="text-verde">✓</span>
+        ) : energyIcons[energyLevel] ? (
+          <span className="opacity-40">{energyIcons[energyLevel]}</span>
+        ) : null}
+      </div>
+    </button>
   );
 }

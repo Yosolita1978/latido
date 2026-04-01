@@ -1,8 +1,8 @@
 const categoryColors: Record<string, string> = {
   admin: "bg-gris/20 text-gris",
-  client_work: "bg-azul-light/20 text-azul",
-  deep_work: "bg-rojo/10 text-rojo",
-  learning: "bg-amarillo/20 text-negro",
+  client_work: "bg-azul/20 text-azul-light",
+  deep_work: "bg-rojo/20 text-rojo",
+  learning: "bg-amarillo/20 text-amarillo",
   personal: "bg-verde/20 text-verde",
   maintenance: "bg-terracotta/20 text-terracotta",
 };
@@ -19,7 +19,7 @@ export function Badge({ label, category, className = "" }: BadgeProps) {
   return (
     <span
       className={`
-        inline-flex items-center px-[var(--space-2)] py-0.5
+        inline-flex items-center px-[var(--space-3)] py-1
         rounded-full text-xs font-medium
         font-[family-name:var(--font-body)]
         ${colors} ${className}

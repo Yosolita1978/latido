@@ -1,40 +1,61 @@
+"use client";
+
 interface ProgressArcProps {
-  percentage: number;
+  completed: number;
+  total: number;
   size?: number;
   strokeWidth?: number;
 }
 
-export function ProgressArc({ percentage, size = 120, strokeWidth = 8 }: ProgressArcProps) {
+export function ProgressArc({ completed, total, size = 180, strokeWidth = 10 }: ProgressArcProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (percentage / 100) * circumference;
+  const percentage = total > 0 ? completed / total : 0;
+  const offset = circumference - percentage * circumference;
 
   return (
-    <div className="flex flex-col items-center gap-[var(--space-2)]">
+    <div className="relative flex items-center justify-center">
       <svg width={size} height={size} className="-rotate-90">
+        {/* Background track */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="var(--talavera-crema)"
+          stroke="var(--talavera-bg-card)"
           strokeWidth={strokeWidth}
         />
+        {/* Gradient definition */}
+        <defs>
+          <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="var(--ring-green)" />
+            <stop offset="50%" stopColor="var(--ring-yellow)" />
+            <stop offset="100%" stopColor="var(--ring-blue)" />
+          </linearGradient>
+        </defs>
+        {/* Progress arc */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="var(--talavera-azul)"
+          stroke="url(#ring-gradient)"
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
+          className="transition-all duration-700"
         />
       </svg>
-      <span className="text-2xl font-bold text-azul font-[family-name:var(--font-heading)]">
-        {Math.round(percentage)}%
-      </span>
+      {/* Center text */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl italic text-blanco font-[family-name:var(--font-heading)]">
+          Enfoque
+        </span>
+        <span className="text-sm text-gris">
+          {completed} de {total}
+        </span>
+      </div>
     </div>
   );
 }

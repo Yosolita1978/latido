@@ -33,10 +33,10 @@ export function PatternCard({ patternKey, patternValue, confidence, lastUpdated,
   const label = PATTERN_LABELS[patternKey] ?? patternKey;
 
   return (
-    <div className="bg-blanco rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] p-[var(--space-4)]">
+    <div className="bg-bg-card rounded-[var(--radius-lg)] p-[var(--space-4)]">
       <div className="flex items-start justify-between gap-[var(--space-2)]">
         <div className="flex-1">
-          <h3 className="text-base font-semibold text-negro">{label}</h3>
+          <h3 className="text-base font-semibold text-blanco">{label}</h3>
           <p className="text-sm text-gris mt-[var(--space-1)]">
             {JSON.stringify(patternValue)}
           </p>
@@ -46,7 +46,7 @@ export function PatternCard({ patternKey, patternValue, confidence, lastUpdated,
                 <span
                   key={dot}
                   className={`w-2 h-2 rounded-full ${
-                    dot <= confidence ? "bg-azul" : "bg-gris/30"
+                    dot <= confidence ? "bg-azul" : "bg-blanco/10"
                   }`}
                 />
               ))}

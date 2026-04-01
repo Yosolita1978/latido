@@ -15,9 +15,9 @@ export function Input({ label, className = "", ...props }: InputProps) {
       <textarea
         className={`
           w-full min-h-[120px] p-[var(--space-4)]
-          bg-crema text-negro text-lg
+          bg-bg-card text-blanco text-lg
           rounded-[var(--radius-md)]
-          border-2 border-transparent
+          border-2 border-blanco/10
           focus:border-azul focus:outline-none
           placeholder:text-gris
           font-[family-name:var(--font-body)]

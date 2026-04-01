@@ -25,9 +25,9 @@ export function Toast({ message, type = "success", onDismiss }: ToastProps) {
       className={`
         fixed bottom-20 left-4 right-4 z-50
         p-[var(--space-4)] rounded-[var(--radius-md)]
-        font-[family-name:var(--font-body)] text-sm text-blanco
+        font-[family-name:var(--font-body)] text-sm
         transition-all duration-200
-        ${type === "success" ? "bg-verde" : "bg-rojo"}
+        ${type === "success" ? "bg-verde/20 text-verde border border-verde/30" : "bg-rojo/20 text-rojo border border-rojo/30"}
         ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}
       `}
     >
