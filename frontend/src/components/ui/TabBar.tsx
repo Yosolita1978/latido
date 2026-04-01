@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 const tabs = [
   {
@@ -15,8 +15,8 @@ const tabs = [
     ),
   },
   {
-    href: "/semana",
-    label: "Semana",
+    href: "/manana",
+    label: "Mañana",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -39,16 +39,19 @@ const tabs = [
   },
 ] as const;
 
-export function TabBar() {
+interface TabBarProps {
+  onCaptureTap: () => void;
+}
+
+export function TabBar({ onCaptureTap }: TabBarProps) {
   const pathname = usePathname();
-  const router = useRouter();
 
   return (
     <>
       {/* FAB - Capture button */}
       <button
-        onClick={() => router.push("/capturar")}
-        className="fixed bottom-20 right-4 z-50 w-14 h-14 rounded-full bg-amarillo shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+        onClick={onCaptureTap}
+        className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-amarillo shadow-lg flex items-center justify-center active:scale-95 transition-transform"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--talavera-bg-primary)" strokeWidth="2.5" strokeLinecap="round">
           <line x1="12" y1="5" x2="12" y2="19" />
@@ -57,7 +60,7 @@ export function TabBar() {
       </button>
 
       {/* Tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-bg-surface border-t border-blanco/10 flex items-center justify-around z-50">
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-bg-surface border-t border-blanco/10 flex items-center justify-around z-40">
         {tabs.map((tab) => {
           const active = pathname.startsWith(tab.href);
           return (

@@ -18,6 +18,10 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Latido",
   description: "Tu planner diario con inteligencia artificial",
+  icons: {
+    icon: "/images/favicon.ico",
+    apple: "/images/favicon.png",
+  },
 };
 
 export default function RootLayout({

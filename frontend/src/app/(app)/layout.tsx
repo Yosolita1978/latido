@@ -1,4 +1,6 @@
-import { TabBar } from "@/components/ui/TabBar";
+import Image from "next/image";
+import Link from "next/link";
+import { AppShell } from "@/components/AppShell";
 
 export default function AppLayout({
   children,
@@ -11,24 +13,22 @@ export default function AppLayout({
       <header className="flex items-center justify-between px-[var(--space-4)] py-[var(--space-3)] sticky top-0 z-40 bg-bg-primary/90 backdrop-blur-sm">
         <div className="w-8" />
         <div className="flex items-center gap-[var(--space-2)]">
-          <span className="text-verde text-lg">♥</span>
+          <Image src="/images/icon.png" alt="Latido" width={36} height={36} />
           <span className="font-[family-name:var(--font-heading)] text-lg text-blanco">
             Latido
           </span>
         </div>
-        <button className="w-8 h-8 flex items-center justify-center text-gris">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
-            <circle cx="9" cy="3" r="1.5" />
-            <circle cx="9" cy="9" r="1.5" />
-            <circle cx="9" cy="15" r="1.5" />
-          </svg>
-        </button>
+        <Link
+          href="/proyectos"
+          className="text-xs text-gris hover:text-blanco transition-colors font-[family-name:var(--font-body)]"
+        >
+          Proyectos
+        </Link>
       </header>
 
-      <main className="flex-1 px-[var(--space-4)] pb-[var(--space-4)] max-w-lg mx-auto w-full">
+      <AppShell>
         {children}
-      </main>
-      <TabBar />
+      </AppShell>
     </div>
   );
 }

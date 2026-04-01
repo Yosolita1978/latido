@@ -3,14 +3,12 @@
 import { Card } from "@/components/ui/Card";
 import { ProgressArc } from "@/components/ui/ProgressArc";
 import { Badge } from "@/components/ui/Badge";
-import Link from "next/link";
 
 interface ReflectionViewProps {
   completionRate: number | null;
   reflection: string | null;
   tasksCompleted: number;
   tasksDeferred: number;
-  totalTasks: number;
 }
 
 export function ReflectionView({
@@ -18,13 +16,12 @@ export function ReflectionView({
   reflection,
   tasksCompleted,
   tasksDeferred,
-  totalTasks,
 }: ReflectionViewProps) {
   if (completionRate === null || !reflection) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-12rem)] gap-[var(--space-4)]">
-        <div className="text-6xl text-azul/30">◐</div>
-        <p className="text-gris text-center">
+      <div className="flex flex-col items-center py-[var(--space-8)] gap-[var(--space-4)]">
+        <div className="text-4xl text-azul/30">◐</div>
+        <p className="text-gris text-center text-sm">
           La reflexión se genera al final del día.
         </p>
       </div>
@@ -32,29 +29,20 @@ export function ReflectionView({
   }
 
   return (
-    <div className="flex flex-col gap-[var(--space-6)]">
-      <Card variant="elevated">
-        <div className="flex flex-col items-center gap-[var(--space-4)] py-[var(--space-4)]">
-          <ProgressArc completed={tasksCompleted} total={totalTasks} />
-          <p className="text-sm text-gris">{completionRate}% completado</p>
+    <Card variant="elevated">
+      <div className="flex flex-col items-center gap-[var(--space-4)] py-[var(--space-4)]">
+        <ProgressArc score={Math.round((completionRate / 100) * 5)} size={120} strokeWidth={8} />
+        <p className="text-sm text-gris">{completionRate}% completado</p>
 
-          <p className="text-base text-blanco italic font-[family-name:var(--font-heading)] text-center px-[var(--space-2)] leading-relaxed">
-            &ldquo;{reflection}&rdquo;
-          </p>
+        <p className="text-base text-blanco italic font-[family-name:var(--font-heading)] text-center px-[var(--space-2)] leading-relaxed">
+          &ldquo;{reflection}&rdquo;
+        </p>
 
-          <div className="flex gap-[var(--space-3)]">
-            <Badge label={`${tasksCompleted} completadas`} category="personal" />
-            <Badge label={`${tasksDeferred} diferidas`} category="admin" />
-          </div>
+        <div className="flex gap-[var(--space-3)]">
+          <Badge label={`${tasksCompleted} completadas`} category="personal" />
+          <Badge label={`${tasksDeferred} diferidas`} category="admin" />
         </div>
-      </Card>
-
-      <Link
-        href="/reflexion/patrones"
-        className="text-center text-azul font-[family-name:var(--font-body)] font-medium hover:underline"
-      >
-        Ver mis patrones →
-      </Link>
-    </div>
+      </div>
+    </Card>
   );
 }

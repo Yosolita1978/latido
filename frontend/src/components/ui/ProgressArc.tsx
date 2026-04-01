@@ -1,16 +1,15 @@
 "use client";
 
 interface ProgressArcProps {
-  completed: number;
-  total: number;
+  score: number; // 0-5
   size?: number;
   strokeWidth?: number;
 }
 
-export function ProgressArc({ completed, total, size = 180, strokeWidth = 10 }: ProgressArcProps) {
+export function ProgressArc({ score, size = 180, strokeWidth = 10 }: ProgressArcProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const percentage = total > 0 ? completed / total : 0;
+  const percentage = Math.max(0, Math.min(score, 5)) / 5;
   const offset = circumference - percentage * circumference;
 
   return (
@@ -53,7 +52,7 @@ export function ProgressArc({ completed, total, size = 180, strokeWidth = 10 }: 
           Enfoque
         </span>
         <span className="text-sm text-gris">
-          {completed} de {total}
+          {score} de 5
         </span>
       </div>
     </div>

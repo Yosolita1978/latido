@@ -142,15 +142,16 @@ def update_task_status(
     task_id: str,
     status: str,
     actual_minutes: int | None = None,
+    completed_at: str | None = None,
 ) -> dict:
-    """Update a task's status. If completed, sets completed_at. If deferred, increments deferred_count."""
+    """Update a task's status. If completed, sets completed_at (accepts ISO 8601 with timezone from frontend, falls back to UTC). If deferred, increments deferred_count."""
     update_data: dict = {"status": status}
 
     if actual_minutes is not None:
         update_data["actual_minutes"] = actual_minutes
 
     if status == "completed":
-        update_data["completed_at"] = datetime.now().isoformat()
+        update_data["completed_at"] = completed_at or datetime.now().isoformat()
 
     result = db.table("tasks").update(update_data).eq("id", task_id).execute()
 
@@ -314,6 +315,68 @@ def get_projects(user_id: str) -> list[dict]:
         .execute()
     )
     return result.data
+
+
+# ---------------------------------------------------------------------------
+# Tool 12: defer_to_tomorrow
+# ---------------------------------------------------------------------------
+@mcp.tool()
+def defer_to_tomorrow(user_id: str, task_id: str, plan_date: str) -> dict:
+    """Defer a task: remove from today's plan and optionally append to tomorrow's plan as unslotted."""
+    # 1. Remove task from today's plan
+    today = date.today().isoformat()
+    today_plan = (
+        db.table("daily_plans")
+        .select("id, time_blocks, total_planned_minutes")
+        .eq("user_id", user_id)
+        .eq("plan_date", today)
+        .execute()
+    )
+
+    if today_plan.data:
+        plan = today_plan.data[0]
+        old_blocks = plan["time_blocks"] or []
+        # Find the deferred block to subtract its minutes
+        deferred_block = next((b for b in old_blocks if b.get("task_id") == task_id), None)
+        deferred_minutes = 0
+        if deferred_block:
+            start = deferred_block.get("start_time", "00:00")
+            end = deferred_block.get("end_time", "00:00")
+            sh, sm = map(int, start.split(":"))
+            eh, em = map(int, end.split(":"))
+            deferred_minutes = (eh * 60 + em) - (sh * 60 + sm)
+
+        new_blocks = [b for b in old_blocks if b.get("task_id") != task_id]
+        new_total = max(0, (plan["total_planned_minutes"] or 0) - deferred_minutes)
+        db.table("daily_plans").update(
+            {"time_blocks": new_blocks, "total_planned_minutes": new_total}
+        ).eq("id", plan["id"]).execute()
+
+    # 2. Check if tomorrow's plan exists
+    tomorrow_plan = (
+        db.table("daily_plans")
+        .select("id, time_blocks")
+        .eq("user_id", user_id)
+        .eq("plan_date", plan_date)
+        .execute()
+    )
+
+    appended = False
+    if tomorrow_plan.data:
+        # Append as unslotted block
+        plan = tomorrow_plan.data[0]
+        blocks = plan["time_blocks"] or []
+        blocks.append({
+            "task_id": task_id,
+            "start_time": "00:00",
+            "end_time": "00:00",
+            "slot_type": "unslotted",
+            "plan_rank": 0,
+        })
+        db.table("daily_plans").update({"time_blocks": blocks}).eq("id", plan["id"]).execute()
+        appended = True
+
+    return {"success": True, "task_id": task_id, "appended_to_tomorrow": appended}
 
 
 # ---------------------------------------------------------------------------

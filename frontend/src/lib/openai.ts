@@ -34,6 +34,21 @@ export async function chat(
 }
 
 export function parseJSON<T>(text: string): T {
-  const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  // Strip markdown fences
+  let cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  // Extract the first JSON object or array from the response
+  const start = cleaned.search(/[{[]/);
+  if (start === -1) throw new Error(`No JSON found in response: ${cleaned.slice(0, 100)}`);
+  const openChar = cleaned[start];
+  const closeChar = openChar === "{" ? "}" : "]";
+  let depth = 0;
+  for (let i = start; i < cleaned.length; i++) {
+    if (cleaned[i] === openChar) depth++;
+    if (cleaned[i] === closeChar) depth--;
+    if (depth === 0) {
+      cleaned = cleaned.slice(start, i + 1);
+      break;
+    }
+  }
   return JSON.parse(cleaned) as T;
 }

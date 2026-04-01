@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { ProgressArc } from "@/components/ui/ProgressArc";
 import { TimeBlock } from "@/components/ui/TimeBlock";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
 import { TEMP_USER_ID } from "@/lib/constants";
+import { calculateEnfoque, getCurrentEnergy } from "@/lib/enfoque";
 
 interface TaskData {
   id: string;
@@ -16,6 +18,7 @@ interface TaskData {
   energy_level: "low" | "medium" | "high";
   project_id: string | null;
   estimated_minutes?: number;
+  completed_at?: string | null;
 }
 
 interface Block {
@@ -23,6 +26,7 @@ interface Block {
   start_time: string;
   end_time: string;
   slot_type: string;
+  plan_rank?: number;
   task?: TaskData;
 }
 
@@ -39,30 +43,31 @@ interface ProjectMap {
   [id: string]: string;
 }
 
+interface PeakWindow {
+  start: number;
+  end: number;
+}
+
 interface DayViewProps {
   plan: Plan | null;
   projects: ProjectMap;
   planDate: string;
+  peakWindow?: PeakWindow;
 }
 
-function getOverallEnergy(blocks: Block[], statuses: Record<string, string>): "low" | "medium" | "high" {
-  const pending = blocks.filter(
-    (b) => b.slot_type !== "break" && b.task && statuses[b.task_id] !== "completed",
-  );
-  if (pending.length === 0) return "low";
-  const levels = pending.map((b) => b.task!.energy_level);
-  if (levels.includes("high")) return "high";
-  if (levels.includes("medium")) return "medium";
-  return "low";
-}
-
-const energyLabels = {
-  low: "Energía baja",
-  medium: "Energía media",
-  high: "Energía alta",
+const currentEnergyLabels = {
+  alta: "Energía alta",
+  media: "Energía media",
+  baja: "Energía baja",
 };
 
-export function DayView({ plan: initialPlan, projects, planDate }: DayViewProps) {
+const currentEnergyColors = {
+  alta: "bg-rojo/20 text-rojo border border-rojo/20",
+  media: "bg-amarillo/20 text-amarillo border border-amarillo/20",
+  baja: "bg-azul-light/20 text-azul-light border border-azul-light/20",
+};
+
+export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { start: 8, end: 12 } }: DayViewProps) {
   const [plan, setPlan] = useState(initialPlan);
   const [taskStatuses, setTaskStatuses] = useState<Record<string, string>>({});
   const [showAll, setShowAll] = useState(false);
@@ -70,7 +75,7 @@ export function DayView({ plan: initialPlan, projects, planDate }: DayViewProps)
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
-    if (plan) {
+    if (plan?.time_blocks) {
       const statuses: Record<string, string> = {};
       for (const block of plan.time_blocks) {
         if (block.task) {
@@ -83,7 +88,7 @@ export function DayView({ plan: initialPlan, projects, planDate }: DayViewProps)
 
   // SSE connection
   useEffect(() => {
-    if (!plan) return;
+    if (!plan?.time_blocks) return;
 
     const eventSource = new EventSource(
       `/api/stream/day?user_id=${TEMP_USER_ID}&plan_date=${planDate}`,
@@ -106,24 +111,59 @@ export function DayView({ plan: initialPlan, projects, planDate }: DayViewProps)
     return () => eventSource.close();
   }, [plan, planDate]);
 
-  const handleToggle = useCallback(async (taskId: string) => {
-    const currentStatus = taskStatuses[taskId];
-    const newStatus = currentStatus === "completed" ? "scheduled" : "completed";
-
-    setTaskStatuses((prev) => ({ ...prev, [taskId]: newStatus }));
-
+  const handleComplete = useCallback(async (taskId: string, actualMinutes: number) => {
+    setTaskStatuses((prev) => ({ ...prev, [taskId]: "completed" }));
     try {
       const response = await fetch("/api/tasks/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ task_id: taskId, status: newStatus }),
+        body: JSON.stringify({
+          task_id: taskId,
+          status: "completed",
+          actual_minutes: actualMinutes,
+          completed_at: new Date().toISOString(),
+        }),
       });
       if (!response.ok) throw new Error(`Error ${response.status}`);
     } catch {
-      setTaskStatuses((prev) => ({ ...prev, [taskId]: currentStatus }));
-      setToast({ message: "No se pudo actualizar la tarea", type: "error" });
+      setTaskStatuses((prev) => ({ ...prev, [taskId]: "scheduled" }));
+      setToast({ message: "No se pudo completar la tarea", type: "error" });
     }
-  }, [taskStatuses]);
+  }, []);
+
+  const handleDefer = useCallback(async (taskId: string) => {
+    setTaskStatuses((prev) => ({ ...prev, [taskId]: "deferred" }));
+    try {
+      const response = await fetch("/api/tasks/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task_id: taskId,
+          status: "deferred",
+          user_id: TEMP_USER_ID,
+        }),
+      });
+      if (!response.ok) throw new Error(`Error ${response.status}`);
+    } catch {
+      setTaskStatuses((prev) => ({ ...prev, [taskId]: "scheduled" }));
+      setToast({ message: "No se pudo diferir la tarea", type: "error" });
+    }
+  }, []);
+
+  const handleCancel = useCallback(async (taskId: string) => {
+    setTaskStatuses((prev) => ({ ...prev, [taskId]: "inbox" }));
+    try {
+      const response = await fetch("/api/tasks/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_id: taskId, status: "inbox" }),
+      });
+      if (!response.ok) throw new Error(`Error ${response.status}`);
+    } catch {
+      setTaskStatuses((prev) => ({ ...prev, [taskId]: "scheduled" }));
+      setToast({ message: "No se pudo cancelar la tarea", type: "error" });
+    }
+  }, []);
 
   async function handleGeneratePlan() {
     setGenerating(true);
@@ -142,11 +182,18 @@ export function DayView({ plan: initialPlan, projects, planDate }: DayViewProps)
   }
 
   // No plan yet
-  if (!plan) {
+  if (!plan || !plan.time_blocks) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-12rem)] gap-[var(--space-6)]">
-        <ProgressArc completed={0} total={0} />
-        <p className="text-gris text-center">No hay plan para hoy todavía.</p>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-12rem)] gap-[var(--space-8)]">
+        <Image
+          src="/images/logo.png"
+          alt="Latido"
+          width={220}
+          height={80}
+          className="opacity-80"
+          priority
+        />
+        <p className="text-gris text-center text-sm">No hay plan para hoy todavía.</p>
         <Button onClick={handleGeneratePlan} disabled={generating}>
           {generating ? (
             <span className="flex items-center gap-[var(--space-2)]">
@@ -164,20 +211,30 @@ export function DayView({ plan: initialPlan, projects, planDate }: DayViewProps)
     );
   }
 
+  // Build enriched blocks with current statuses for Enfoque calculation
+  const enrichedBlocks = plan.time_blocks.map((block) => ({
+    ...block,
+    task: block.task
+      ? { ...block.task, status: taskStatuses[block.task_id] ?? block.task.status }
+      : block.task,
+  }));
+
+  // Calculate Enfoque score
+  const { score: enfoqueScore } = calculateEnfoque(enrichedBlocks, peakWindow);
+
+  // Current energy based on time of day
+  const currentEnergy = getCurrentEnergy(peakWindow);
+
   // Separate task blocks from breaks
-  const taskBlocks = plan.time_blocks.filter((b) => b.slot_type !== "break" && b.task);
-  const completedCount = taskBlocks.filter((b) => taskStatuses[b.task_id] === "completed").length;
-  const totalCount = taskBlocks.length;
+  const taskBlocks = enrichedBlocks.filter((b) => b.slot_type !== "break" && b.task);
 
-  // TOP 3 and overflow
-  const top3 = taskBlocks.slice(0, 3);
-  const overflow = taskBlocks.slice(3);
-  const overallEnergy = getOverallEnergy(taskBlocks, taskStatuses);
-
-  // Find next upcoming event-like task (client_work with a time)
-  const upcomingEvent = taskBlocks.find(
-    (b) => b.task?.category === "client_work" && taskStatuses[b.task_id] !== "completed",
-  );
+  // TOP 3 by plan_rank (fallback to first 3)
+  const top3Ranked = taskBlocks
+    .filter((b) => b.plan_rank && b.plan_rank >= 1 && b.plan_rank <= 3)
+    .sort((a, b) => (a.plan_rank ?? 0) - (b.plan_rank ?? 0));
+  const top3 = top3Ranked.length > 0 ? top3Ranked : taskBlocks.slice(0, 3);
+  const top3Ids = new Set(top3.map((b) => b.task_id));
+  const overflow = taskBlocks.filter((b) => !top3Ids.has(b.task_id));
 
   return (
     <div className="flex flex-col items-center gap-[var(--space-6)]">
@@ -189,43 +246,21 @@ export function DayView({ plan: initialPlan, projects, planDate }: DayViewProps)
       </div>
       <span className="text-xs text-gris tracking-widest uppercase">Hoy</span>
 
-      {/* Focus ring */}
-      <ProgressArc completed={completedCount} total={totalCount} />
+      {/* Enfoque ring */}
+      <ProgressArc score={enfoqueScore} />
 
-      {/* Energy badge */}
+      {/* Current energy badge (time-based) */}
       <Badge
-        label={`⚡ ${energyLabels[overallEnergy]}`}
-        className="bg-bg-card-elevated text-amarillo border border-amarillo/20"
+        label={`⚡ ${currentEnergyLabels[currentEnergy]}`}
+        className={currentEnergyColors[currentEnergy]}
       />
 
-      {/* Upcoming event */}
-      {upcomingEvent && (
-        <div className="w-full bg-bg-card rounded-[var(--radius-lg)] p-[var(--space-4)] flex items-center gap-[var(--space-3)]">
-          <div className="w-8 h-8 bg-bg-card-elevated rounded-[var(--radius-sm)] flex items-center justify-center text-gris">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-blanco font-medium truncate">
-              {upcomingEvent.task?.project_id ? projects[upcomingEvent.task.project_id] : upcomingEvent.task?.title}
-            </p>
-            <p className="text-xs text-gris">
-              {upcomingEvent.start_time} PM · Zoom
-            </p>
-          </div>
-          <span className="text-xs text-verde whitespace-nowrap">
-            en {upcomingEvent.start_time}
-          </span>
-        </div>
-      )}
+      {/* Future: Calendar integration for upcoming events */}
 
       {/* TOP 3 section */}
       <div className="w-full">
         <span className="text-xs text-gris tracking-widest uppercase mb-[var(--space-3)] block">
-          Top {Math.min(3, taskBlocks.length)}
+          Top {Math.min(3, top3.length)}
         </span>
         <div className="flex flex-col gap-[var(--space-3)]">
           {top3.map((block, index) => (
@@ -243,14 +278,16 @@ export function DayView({ plan: initialPlan, projects, planDate }: DayViewProps)
               completed={taskStatuses[block.task_id] === "completed"}
               estimatedMinutes={block.task?.estimated_minutes}
               featured={index === 0}
-              onToggle={handleToggle}
+              onComplete={handleComplete}
+              onDefer={handleDefer}
+              onCancel={handleCancel}
             />
           ))}
         </div>
 
-        {/* Swipe hint */}
-        <p className="text-xs text-gris/50 text-center mt-[var(--space-3)]">
-          ← desliza para completar o diferir →
+        {/* Expand hint */}
+        <p className="text-xs text-gris/30 text-center mt-[var(--space-3)]">
+          toca una tarea para ver opciones
         </p>
       </div>
 
@@ -283,7 +320,9 @@ export function DayView({ plan: initialPlan, projects, planDate }: DayViewProps)
               slotType={block.slot_type}
               completed={taskStatuses[block.task_id] === "completed"}
               estimatedMinutes={block.task?.estimated_minutes}
-              onToggle={handleToggle}
+              onComplete={handleComplete}
+              onDefer={handleDefer}
+              onCancel={handleCancel}
             />
           ))}
         </div>

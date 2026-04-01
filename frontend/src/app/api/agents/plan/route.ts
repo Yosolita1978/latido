@@ -6,6 +6,7 @@ interface TimeBlock {
   start_time: string;
   end_time: string;
   slot_type: string;
+  plan_rank: number;
 }
 
 interface PlanResult {
@@ -158,7 +159,8 @@ Create a daily plan. Return ONLY valid JSON:
       "task_id": "uuid",
       "start_time": "HH:MM",
       "end_time": "HH:MM",
-      "slot_type": "deep_work | admin | client_work | learning | personal | maintenance | break"
+      "slot_type": "deep_work | admin | client_work | learning | personal | maintenance | break",
+      "plan_rank": number (1, 2, or 3 for the TOP 3 most important tasks; 0 for all others)
     }
   ],
   "total_planned_minutes": number,
@@ -175,7 +177,9 @@ Rules:
 - If a task has a due_date approaching, prioritize it.
 - Distribute across projects based on priority and hours_per_week_needed.
 - Leave 15-30 minutes of buffer time. Do not fill every minute.
-- If max_daily_tasks is set, do not exceed it.`;
+- If max_daily_tasks is set, do not exceed it.
+- Mark the 3 most important tasks with plan_rank 1, 2, 3. These are the TOP 3 non-negotiable tasks. All other tasks get plan_rank 0.
+- TOP 3 criteria: due dates first, then high-priority project tasks, then chronically deferred tasks.`;
 
   const response = await chat(systemPrompt, `Generate a plan for ${dayOfWeek}, ${plan_date}`, {
     name: "day-architect",
