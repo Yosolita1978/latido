@@ -1,0 +1,36 @@
+@import "tailwindcss";
+@import "../styles/talavera.css";
+
+@theme inline {
+  --color-azul: var(--talavera-azul);
+  --color-azul-light: var(--talavera-azul-light);
+  --color-amarillo: var(--talavera-amarillo);
+  --color-terracotta: var(--talavera-terracotta);
+  --color-crema: var(--talavera-crema);
+  --color-blanco: var(--talavera-blanco);
+  --color-verde: var(--talavera-verde);
+  --color-rojo: var(--talavera-rojo);
+  --color-gris: var(--talavera-gris);
+  --color-negro: var(--talavera-negro);
+
+  --color-energy-low: var(--energy-low);
+  --color-energy-medium: var(--energy-medium);
+  --color-energy-high: var(--energy-high);
+
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+}
+
+body {
+  background: var(--talavera-crema);
+  color: var(--talavera-negro);
+  font-family: var(--font-body);
+}
