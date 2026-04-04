@@ -38,10 +38,10 @@ export default async function PatronesPage() {
   const tasksDeferred = taskBlocks.filter((b) => b.task!.status !== "completed").length;
 
   return (
-    <div className="flex flex-col gap-[var(--space-8)]">
+    <div className="flex flex-col gap-(--space-8) animate-fade-slide-up">
       {/* Reflection card (if available) */}
       <div>
-        <h2 className="font-[family-name:var(--font-heading)] text-xl text-blanco mb-[var(--space-4)]">
+        <h2 className="font-[family-name:var(--font-heading)] text-xl text-blanco mb-(--space-4) italic">
           Reflexión del día
         </h2>
         <ReflectionView
@@ -54,11 +54,11 @@ export default async function PatronesPage() {
 
       {/* Patterns section */}
       <div>
-        <h2 className="font-[family-name:var(--font-heading)] text-xl text-blanco mb-[var(--space-2)]">
+        <h2 className="font-[family-name:var(--font-heading)] text-xl text-blanco mb-(--space-2) italic">
           Lo que Latido sabe de ti
         </h2>
-        <p className="text-xs text-gris mb-[var(--space-4)]">
-          Estos patrones se aprenden de tu actividad diaria. Puedes eliminar cualquiera.
+        <p className="text-xs text-gris/60 mb-(--space-4) font-[family-name:var(--font-body)]">
+          Estos patrones se aprenden de tu actividad diaria.
         </p>
         <PatronesView patterns={patterns} />
       </div>

@@ -62,9 +62,9 @@ const currentEnergyLabels = {
 };
 
 const currentEnergyColors = {
-  alta: "bg-rojo/20 text-rojo border border-rojo/20",
-  media: "bg-amarillo/20 text-amarillo border border-amarillo/20",
-  baja: "bg-azul-light/20 text-azul-light border border-azul-light/20",
+  alta: "bg-rojo/10 text-rojo border-rojo/15",
+  media: "bg-amarillo/10 text-amarillo border-amarillo/15",
+  baja: "bg-[var(--energy-low)]/10 text-[var(--energy-low)] border-[var(--energy-low)]/15",
 };
 
 export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { start: 8, end: 12 } }: DayViewProps) {
@@ -184,19 +184,24 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
   // No plan yet
   if (!plan || !plan.time_blocks) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-12rem)] gap-[var(--space-8)]">
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-12rem)] gap-(--space-8) animate-fade-slide-up">
         <Image
-          src="/images/logo.png"
+          src="/images/icon-white.png"
           alt="Latido"
-          width={220}
+          width={80}
           height={80}
-          className="opacity-80"
+          className="opacity-60"
           priority
         />
-        <p className="text-gris text-center text-sm">No hay plan para hoy todavía.</p>
+        <div className="text-center">
+          <p className="text-blanco font-[family-name:var(--font-heading)] text-lg italic">
+            Tu día espera
+          </p>
+          <p className="text-gris text-sm mt-1">No hay plan para hoy todavía.</p>
+        </div>
         <Button onClick={handleGeneratePlan} disabled={generating}>
           {generating ? (
-            <span className="flex items-center gap-[var(--space-2)]">
+            <span className="flex items-center gap-(--space-2)">
               <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -237,32 +242,26 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
   const overflow = taskBlocks.filter((b) => !top3Ids.has(b.task_id));
 
   return (
-    <div className="flex flex-col items-center gap-[var(--space-6)]">
-      {/* Page dots */}
-      <div className="flex items-center gap-1.5 pt-[var(--space-2)]">
-        <div className="w-6 h-1.5 rounded-full bg-azul" />
-        <div className="w-1.5 h-1.5 rounded-full bg-gris/40" />
-        <div className="w-1.5 h-1.5 rounded-full bg-gris/40" />
-      </div>
-      <span className="text-xs text-gris tracking-widest uppercase">Hoy</span>
+    <div className="flex flex-col items-center gap-(--space-6)">
+      <span className="text-xs text-gris tracking-[0.2em] uppercase pt-(--space-2) font-[family-name:var(--font-body)] font-medium">
+        Hoy
+      </span>
 
       {/* Enfoque ring */}
       <ProgressArc score={enfoqueScore} />
 
       {/* Current energy badge (time-based) */}
       <Badge
-        label={`⚡ ${currentEnergyLabels[currentEnergy]}`}
+        label={`${currentEnergyLabels[currentEnergy]}`}
         className={currentEnergyColors[currentEnergy]}
       />
 
-      {/* Future: Calendar integration for upcoming events */}
-
       {/* TOP 3 section */}
       <div className="w-full">
-        <span className="text-xs text-gris tracking-widest uppercase mb-[var(--space-3)] block">
+        <span className="text-xs text-gris tracking-[0.15em] uppercase mb-(--space-3) block font-[family-name:var(--font-body)] font-medium">
           Top {Math.min(3, top3.length)}
         </span>
-        <div className="flex flex-col gap-[var(--space-3)]">
+        <div className="flex flex-col gap-(--space-3) stagger-children">
           {top3.map((block, index) => (
             <TimeBlock
               key={`${block.task_id}-${index}`}
@@ -286,7 +285,7 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
         </div>
 
         {/* Expand hint */}
-        <p className="text-xs text-gris/30 text-center mt-[var(--space-3)]">
+        <p className="text-xs text-gris/25 text-center mt-(--space-3) font-[family-name:var(--font-body)]">
           toca una tarea para ver opciones
         </p>
       </div>
@@ -295,17 +294,16 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
       {overflow.length > 0 && (
         <button
           onClick={() => setShowAll(!showAll)}
-          className="w-full bg-bg-card rounded-[var(--radius-lg)] py-[var(--space-3)] text-center"
+          className="w-full bg-bg-card/50 rounded-(--radius-lg) py-(--space-3) text-center border border-blanco/[0.04] transition-all active:scale-[0.99]"
         >
           <span className="text-sm text-azul font-medium">
             {showAll ? "Ocultar" : `${overflow.length} tareas más`}
           </span>
-          <span className="text-xs text-gris"> · toca para ver</span>
         </button>
       )}
 
       {showAll && (
-        <div className="w-full flex flex-col gap-[var(--space-3)]">
+        <div className="w-full flex flex-col gap-(--space-3) stagger-children">
           {overflow.map((block, index) => (
             <TimeBlock
               key={`${block.task_id}-overflow-${index}`}

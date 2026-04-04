@@ -5,12 +5,12 @@ interface CardProps {
 }
 
 export function Card({ children, variant = "default", className = "" }: CardProps) {
-  const base = "rounded-[var(--radius-lg)] p-[var(--space-4)]";
+  const base = "rounded-(--radius-lg) p-(--space-4) border border-blanco/[0.04]";
 
   const variants = {
     default: "bg-bg-card",
     tile: "bg-bg-card talavera-border-top",
-    elevated: "bg-bg-card-elevated shadow-[var(--shadow-md)]",
+    elevated: "bg-bg-card-elevated shadow-(--shadow-md)",
   };
 
   return (

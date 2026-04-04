@@ -152,11 +152,20 @@ ${projectsFormatted}
 AVAILABLE TASKS:
 ${tasksFormatted}
 
-Create a daily plan. Return ONLY valid JSON:
+Create a daily plan using ONLY the tasks listed above in AVAILABLE TASKS.
+
+CRITICAL: The task_id field MUST be a valid UUID copied exactly from the [uuid] in the AVAILABLE TASKS list.
+- Do NOT invent task IDs
+- Do NOT use project names, commitment names, or any text as task_id
+- Do NOT create tasks that are not in the AVAILABLE TASKS list
+- For lunch breaks, use task_id: null and slot_type: "break"
+- If there are not enough tasks to fill the day, that is fine — plan fewer blocks
+
+Return ONLY valid JSON:
 {
   "time_blocks": [
     {
-      "task_id": "uuid",
+      "task_id": "copy-exact-uuid-from-available-tasks-or-null-for-breaks",
       "start_time": "HH:MM",
       "end_time": "HH:MM",
       "slot_type": "deep_work | admin | client_work | learning | personal | maintenance | break",
@@ -168,11 +177,12 @@ Create a daily plan. Return ONLY valid JSON:
 }
 
 Rules:
+- ONLY schedule tasks from the AVAILABLE TASKS list using their exact UUID.
 - Respect the available_minutes ceiling. Do NOT overplan.
 - If patterns indicate the user completes fewer tasks than planned, plan fewer tasks.
 - Schedule high-energy tasks during morning hours (before 12:00).
 - Schedule low-energy tasks in the afternoon.
-- Include a lunch break around 12:00-13:00.
+- Include a lunch break around 12:00-13:00 with task_id: null and slot_type: "break".
 - Tasks with high deferred_count should be prioritized (the user keeps avoiding them).
 - If a task has a due_date approaching, prioritize it.
 - Distribute across projects based on priority and hours_per_week_needed.

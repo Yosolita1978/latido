@@ -19,9 +19,9 @@ export function ReflectionView({
 }: ReflectionViewProps) {
   if (completionRate === null || !reflection) {
     return (
-      <div className="flex flex-col items-center py-[var(--space-8)] gap-[var(--space-4)]">
-        <div className="text-4xl text-azul/30">◐</div>
-        <p className="text-gris text-center text-sm">
+      <div className="flex flex-col items-center py-(--space-8) gap-(--space-4)">
+        <div className="text-4xl text-azul/20">◐</div>
+        <p className="text-gris text-center text-sm font-[family-name:var(--font-body)]">
           La reflexión se genera al final del día.
         </p>
       </div>
@@ -30,15 +30,15 @@ export function ReflectionView({
 
   return (
     <Card variant="elevated">
-      <div className="flex flex-col items-center gap-[var(--space-4)] py-[var(--space-4)]">
-        <ProgressArc score={Math.round((completionRate / 100) * 5)} size={120} strokeWidth={8} />
-        <p className="text-sm text-gris">{completionRate}% completado</p>
+      <div className="flex flex-col items-center gap-(--space-4) py-(--space-4)">
+        <ProgressArc score={Math.round((completionRate / 100) * 5)} size={120} strokeWidth={7} />
+        <p className="text-sm text-gris font-[family-name:var(--font-body)]">{completionRate}% completado</p>
 
-        <p className="text-base text-blanco italic font-[family-name:var(--font-heading)] text-center px-[var(--space-2)] leading-relaxed">
+        <p className="text-base text-blanco/90 italic font-[family-name:var(--font-heading)] text-center px-(--space-2) leading-relaxed">
           &ldquo;{reflection}&rdquo;
         </p>
 
-        <div className="flex gap-[var(--space-3)]">
+        <div className="flex gap-(--space-3)">
           <Badge label={`${tasksCompleted} completadas`} category="personal" />
           <Badge label={`${tasksDeferred} diferidas`} category="admin" />
         </div>

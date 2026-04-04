@@ -44,6 +44,7 @@ function getDayOfWeek(dateStr: string): string {
 }
 
 export async function POST(request: Request) {
+  try {
   const { user_id, plan_date } = await request.json();
 
   if (!user_id || !plan_date) {
@@ -135,9 +136,10 @@ Respond in Spanish. Tone: warm, direct, like a trusted friend who's also a good 
     .eq("id", plan.id);
 
   // Step 6: Pattern extraction
-  const existingPatterns = (await callTool("get_user_patterns", {
+  const rawPatterns = await callTool("get_user_patterns", {
     user_id,
-  })) as Pattern[];
+  });
+  const existingPatterns: Pattern[] = Array.isArray(rawPatterns) ? rawPatterns : [];
 
   const patternsFormatted = existingPatterns.length > 0
     ? existingPatterns
@@ -224,4 +226,9 @@ Return the resolved pattern_value as JSON. Keep the most current/accurate inform
     reflection: reflectionResponse.trim(),
     patterns_written: patternsWritten,
   });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Accountability Agent error:", message);
+    return Response.json({ error: message }, { status: 500 });
+  }
 }

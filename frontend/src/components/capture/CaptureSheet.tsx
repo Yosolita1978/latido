@@ -32,9 +32,9 @@ const placeholders = [
 ];
 
 const energyOptions = [
-  { level: "low", icon: "〰", label: "Baja", activeClass: "bg-azul-light/20 text-azul-light border-azul-light/40" },
-  { level: "medium", icon: "〜", label: "Media", activeClass: "bg-amarillo/20 text-amarillo border-amarillo/40" },
-  { level: "high", icon: "⚡", label: "Alta", activeClass: "bg-rojo/20 text-rojo border-rojo/40" },
+  { level: "low", icon: "〰", label: "Baja", activeClass: "bg-[var(--energy-low)]/15 text-[var(--energy-low)] border-[var(--energy-low)]/30" },
+  { level: "medium", icon: "〜", label: "Media", activeClass: "bg-amarillo/15 text-amarillo border-amarillo/30" },
+  { level: "high", icon: "⚡", label: "Alta", activeClass: "bg-rojo/15 text-rojo border-rojo/30" },
 ];
 
 const timeOptions = [
@@ -117,14 +117,13 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
   async function handleMatchTap(matchId: string, matchTitle: string) {
     setLoading(true);
     try {
-      // Link to existing task (bump to inbox for today)
       await fetch("/api/tasks/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ task_id: matchId, status: "inbox" }),
       });
       onClose();
-      setToast({ message: `✓ ${matchTitle}`, type: "success" });
+      setToast({ message: `${matchTitle}`, type: "success" });
     } catch {
       setToast({ message: "No se pudo vincular la tarea", type: "error" });
     } finally {
@@ -135,7 +134,6 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
   async function handleSubmit() {
     if (!rawText.trim() || loading) return;
 
-    // Build the text with project context if selected
     let text = rawText;
     if (selectedProject) {
       const projName = projects.find((p) => p.id === selectedProject)?.name;
@@ -160,10 +158,7 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
 
       const data = await response.json();
       onClose();
-      setToast({
-        message: `✓ ${data.title}`,
-        type: "success",
-      });
+      setToast({ message: data.title, type: "success" });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error desconocido";
       setToast({ message: `No se pudo capturar: ${message}`, type: "error" });
@@ -177,7 +172,7 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
       {/* Backdrop */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 transition-opacity"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity"
           onClick={onClose}
         />
       )}
@@ -186,7 +181,8 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
       <div
         className={`
           fixed bottom-0 left-0 right-0 z-50
-          bg-bg-surface rounded-t-[24px]
+          bg-bg-surface/95 backdrop-blur-xl rounded-t-[28px]
+          border-t border-blanco/5
           transition-transform duration-300 ease-out
           ${open ? "translate-y-0" : "translate-y-full"}
         `}
@@ -194,10 +190,10 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 rounded-full bg-blanco/20" />
+          <div className="w-10 h-1 rounded-full bg-blanco/15" />
         </div>
 
-        <div className="flex flex-col h-[calc(100%-20px)] px-[var(--space-4)] pb-[var(--space-4)]">
+        <div className="flex flex-col h-[calc(100%-20px)] px-(--space-4) pb-(--space-4)">
           {/* Textarea */}
           <textarea
             ref={textareaRef}
@@ -205,11 +201,11 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
             value={rawText}
             onChange={(e) => handleTextChange(e.target.value)}
             disabled={loading}
-            className="w-full min-h-[80px] max-h-[160px] p-[var(--space-4)] bg-bg-card text-blanco text-base rounded-[var(--radius-lg)] border border-blanco/10 focus:border-azul focus:outline-none placeholder:text-gris/50 font-[family-name:var(--font-body)] resize-none"
+            className="w-full min-h-[80px] max-h-[160px] p-(--space-4) bg-bg-card text-blanco text-base rounded-(--radius-lg) border border-blanco/[0.06] focus:border-azul/50 focus:outline-none placeholder:text-gris/40 font-[family-name:var(--font-body)] resize-none transition-colors"
           />
 
           {/* Project chips — horizontal scroll */}
-          <div className="flex gap-[var(--space-2)] overflow-x-auto py-[var(--space-3)] scrollbar-hide">
+          <div className="flex gap-(--space-2) overflow-x-auto py-(--space-3) scrollbar-hide">
             {projects.map((project) => (
               <button
                 key={project.id}
@@ -218,12 +214,12 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
                 }
                 disabled={loading}
                 className={`
-                  whitespace-nowrap px-[var(--space-3)] py-1.5 rounded-full text-xs font-medium
-                  font-[family-name:var(--font-body)] transition-colors flex-shrink-0
+                  whitespace-nowrap px-(--space-3) py-1.5 rounded-full text-xs font-medium
+                  font-[family-name:var(--font-body)] transition-all flex-shrink-0
                   ${
                     selectedProject === project.id
                       ? "bg-azul text-bg-primary"
-                      : "bg-bg-card text-gris border border-blanco/10"
+                      : "bg-bg-card text-gris border border-blanco/[0.06] active:border-blanco/15"
                   }
                 `}
               >
@@ -237,9 +233,9 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
             <button
               onClick={() => handleMatchTap(matches[0].id, matches[0].title)}
               disabled={loading}
-              className="w-full bg-bg-card-elevated rounded-[var(--radius-md)] p-[var(--space-3)] flex items-center gap-[var(--space-3)] mb-[var(--space-3)] text-left"
+              className="w-full bg-bg-card-elevated rounded-(--radius-md) p-(--space-3) flex items-center gap-(--space-3) mb-(--space-3) text-left border border-azul/10 transition-all active:border-azul/25"
             >
-              <span className="text-azul text-xs flex-shrink-0">¿Es esta tarea? →</span>
+              <span className="text-azul text-xs flex-shrink-0">¿Es esta tarea?</span>
               <span className="text-sm text-blanco truncate">{matches[0].title}</span>
             </button>
           )}
@@ -247,24 +243,24 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
           {/* More options toggle */}
           <button
             onClick={() => setShowOptions(!showOptions)}
-            className="text-xs text-gris/60 text-left py-1"
+            className="text-xs text-gris/50 text-left py-1 font-[family-name:var(--font-body)] transition-colors hover:text-gris/80"
           >
-            {showOptions ? "menos opciones ▲" : "más opciones ▼"}
+            {showOptions ? "menos opciones" : "más opciones"}
           </button>
 
           {showOptions && (
-            <div className="flex items-center gap-[var(--space-2)] py-[var(--space-2)]">
+            <div className="flex items-center gap-(--space-2) py-(--space-2) animate-fade-in">
               {/* Energy icons */}
               {energyOptions.map((opt) => (
                 <button
                   key={opt.level}
                   onClick={() => setSelectedEnergy(selectedEnergy === opt.level ? null : opt.level)}
                   className={`
-                    min-w-[48px] min-h-[48px] rounded-[var(--radius-md)] text-sm
+                    min-w-[48px] min-h-[48px] rounded-(--radius-md) text-sm
                     flex items-center justify-center border-2 transition-all
                     ${selectedEnergy === opt.level
                       ? opt.activeClass
-                      : "bg-bg-card text-gris border-blanco/10"
+                      : "bg-bg-card text-gris border-blanco/[0.06]"
                     }
                   `}
                   aria-label={`Energía ${opt.label}`}
@@ -272,17 +268,17 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
                   {opt.icon}
                 </button>
               ))}
-              <div className="w-px h-6 bg-blanco/10" />
+              <div className="w-px h-6 bg-blanco/[0.06]" />
               {/* Time pills */}
               {timeOptions.map((opt) => (
                 <button
                   key={opt.minutes}
                   onClick={() => setSelectedTime(selectedTime === opt.minutes ? null : opt.minutes)}
                   className={`
-                    min-h-[48px] px-2.5 rounded-[var(--radius-md)] text-xs transition-colors
+                    min-h-[48px] px-2.5 rounded-(--radius-md) text-xs font-medium transition-all
                     ${selectedTime === opt.minutes
                       ? "bg-azul text-bg-primary"
-                      : "bg-bg-card text-gris border border-blanco/10"
+                      : "bg-bg-card text-gris border border-blanco/[0.06]"
                     }
                   `}
                 >
@@ -300,13 +296,13 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
             onClick={handleSubmit}
             disabled={loading || !rawText.trim()}
             className={`
-              w-full min-h-[48px] rounded-[var(--radius-md)]
+              w-full min-h-[48px] rounded-(--radius-md)
               font-[family-name:var(--font-body)] font-semibold text-base
-              transition-all duration-150
-              disabled:opacity-40 disabled:cursor-not-allowed
+              transition-all duration-200
+              disabled:opacity-30 disabled:cursor-not-allowed
               ${loading
-                ? "bg-azul/70 text-bg-primary animate-pulse"
-                : "bg-azul text-bg-primary active:bg-azul-light"
+                ? "bg-azul/60 text-bg-primary animate-pulse"
+                : "bg-azul text-bg-primary active:scale-[0.98] shadow-[0_4px_16px_rgba(59,143,228,0.25)]"
               }
             `}
           >

@@ -1,37 +1,37 @@
 /* ============================================
-   LATIDO — Talavera Design System (Dark Mode)
-   Inspired by Mexican ceramic tiles from Puebla
-   Dark theme with warm Talavera accents
+   LATIDO — Talavera Nocturna Design System
+   Inspired by candlelit Mexican ceramic workshops
+   Rich dark theme with warm Talavera accents
    ============================================ */
 
 :root {
-  /* Dark backgrounds */
-  --talavera-bg-primary: #0B1120;
-  --talavera-bg-card: #131B2E;
-  --talavera-bg-card-elevated: #1A2340;
-  --talavera-bg-surface: #0F1729;
+  /* Deep night backgrounds — warm undertones */
+  --talavera-bg-primary: #080D1A;
+  --talavera-bg-card: #0F1628;
+  --talavera-bg-card-elevated: #161E35;
+  --talavera-bg-surface: #0B1122;
 
-  /* Talavera accent colors */
-  --talavera-azul: #4A9EE5;
-  --talavera-azul-light: #6BB8F0;
-  --talavera-amarillo: #F4D03F;
-  --talavera-terracotta: #CB6843;
+  /* Talavera accent colors — richer, more saturated */
+  --talavera-azul: #3B8FE4;
+  --talavera-azul-light: #5AAEF5;
+  --talavera-amarillo: #F2C94C;
+  --talavera-terracotta: #D4714B;
   --talavera-crema: #FDF2E9;
-  --talavera-blanco: #E8ECF1;
-  --talavera-verde: #4CD9A0;
-  --talavera-rojo: #E85D5D;
-  --talavera-gris: #6B7A8D;
-  --talavera-negro: #E8ECF1;
+  --talavera-blanco: #E4E9F2;
+  --talavera-verde: #34D399;
+  --talavera-rojo: #F06060;
+  --talavera-gris: #5E6E85;
+  --talavera-negro: #E4E9F2;
 
   /* Energy level colors */
-  --energy-low: var(--talavera-azul-light);
+  --energy-low: #6893C0;
   --energy-medium: var(--talavera-amarillo);
   --energy-high: var(--talavera-rojo);
 
-  /* Ring gradient colors (from screenshot) */
-  --ring-green: #4CD9A0;
-  --ring-yellow: #F4D03F;
-  --ring-blue: #4A9EE5;
+  /* Ring gradient colors */
+  --ring-green: #34D399;
+  --ring-yellow: #F2C94C;
+  --ring-blue: #3B8FE4;
 
   /* Spacing (4px base) */
   --space-1: 0.25rem;
@@ -45,22 +45,23 @@
   --space-16: 4rem;
 
   /* Border radius */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
   --radius-full: 9999px;
 
-  /* Shadows (subtle glow on dark) */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-glow-azul: 0 0 20px rgba(74, 158, 229, 0.15);
-  --shadow-glow-verde: 0 0 20px rgba(76, 217, 160, 0.15);
+  /* Shadows — warm glows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --shadow-glow-azul: 0 0 24px rgba(59, 143, 228, 0.12);
+  --shadow-glow-verde: 0 0 24px rgba(52, 211, 153, 0.12);
+  --shadow-glow-terracotta: 0 0 24px rgba(212, 113, 75, 0.1);
 
   /* Typography */
-  --font-heading: 'DM Serif Display', Georgia, serif;
-  --font-body: 'Inter', system-ui, sans-serif;
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
@@ -74,15 +75,15 @@
     var(--talavera-amarillo) 12px,
     var(--talavera-terracotta) 12px,
     var(--talavera-terracotta) 16px,
-    var(--talavera-bg-primary) 16px,
-    var(--talavera-bg-primary) 20px
+    transparent 16px,
+    transparent 20px
   ) 4;
-  border-width: 4px;
+  border-width: 3px;
   border-style: solid;
 }
 
 .talavera-border-top {
-  border-top: 4px solid;
+  border-top: 3px solid;
   border-image: repeating-linear-gradient(
     90deg,
     var(--talavera-azul) 0px,
@@ -91,7 +92,139 @@
     var(--talavera-amarillo) 12px,
     var(--talavera-terracotta) 12px,
     var(--talavera-terracotta) 16px,
-    var(--talavera-bg-primary) 16px,
-    var(--talavera-bg-primary) 20px
+    transparent 16px,
+    transparent 20px
   ) 1;
+}
+
+/* Subtle noise overlay for depth */
+.noise-overlay::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.025;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px;
+}
+
+/* Ambient glow behind the Enfoque ring */
+.enfoque-glow {
+  position: relative;
+}
+
+.enfoque-glow::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(59, 143, 228, 0.08) 0%,
+    rgba(52, 211, 153, 0.04) 40%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* Card hover glow */
+.card-glow {
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.card-glow:active {
+  transform: scale(0.985);
+  box-shadow: 0 0 0 1px rgba(59, 143, 228, 0.15), var(--shadow-glow-azul);
+}
+
+/* Smooth page transitions */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-slide-up {
+  animation: fadeSlideUp 0.4s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out both;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out both;
+}
+
+/* Stagger children animation */
+.stagger-children > * {
+  animation: fadeSlideUp 0.4s ease-out both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 360ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 420ms; }
+
+/* Glass morphism for elevated surfaces */
+.glass {
+  background: rgba(15, 22, 40, 0.7);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--talavera-azul), var(--talavera-verde));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Shimmer loading effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--talavera-bg-card) 25%,
+    var(--talavera-bg-card-elevated) 50%,
+    var(--talavera-bg-card) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }

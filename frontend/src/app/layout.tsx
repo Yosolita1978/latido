@@ -1,15 +1,14 @@
-import type { Metadata } from "next";
-import { DM_Serif_Display, Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
-const dmSerif = DM_Serif_Display({
-  weight: "400",
+const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-heading",
   display: "swap",
 });
 
-const inter = Inter({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-body",
   display: "swap",
@@ -19,9 +18,16 @@ export const metadata: Metadata = {
   title: "Latido",
   description: "Tu planner diario con inteligencia artificial",
   icons: {
-    icon: "/images/favicon.ico",
-    apple: "/images/favicon.png",
+    icon: "/images/icon-white.png",
+    apple: "/images/icon-white.png",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#080D1A",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -30,8 +36,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${dmSerif.variable} ${inter.variable} h-full`}>
-      <body className="min-h-full flex flex-col antialiased">{children}</body>
+    <html lang="es" className={`${playfair.variable} ${jakarta.variable} h-full`}>
+      <body className="min-h-full flex flex-col antialiased noise-overlay">{children}</body>
     </html>
   );
 }

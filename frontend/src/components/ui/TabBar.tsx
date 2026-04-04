@@ -51,7 +51,8 @@ export function TabBar({ onCaptureTap }: TabBarProps) {
       {/* FAB - Capture button */}
       <button
         onClick={onCaptureTap}
-        className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-amarillo shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+        className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-amarillo flex items-center justify-center active:scale-90 transition-all duration-200 hover:shadow-[0_0_24px_rgba(242,201,76,0.3)]"
+        style={{ boxShadow: "0 4px 20px rgba(242, 201, 76, 0.25)" }}
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--talavera-bg-primary)" strokeWidth="2.5" strokeLinecap="round">
           <line x1="12" y1="5" x2="12" y2="19" />
@@ -60,7 +61,7 @@ export function TabBar({ onCaptureTap }: TabBarProps) {
       </button>
 
       {/* Tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-bg-surface border-t border-blanco/10 flex items-center justify-around z-40">
+      <nav className="fixed bottom-0 left-0 right-0 h-16 glass border-t border-blanco/5 flex items-center justify-around z-40">
         {tabs.map((tab) => {
           const active = pathname.startsWith(tab.href);
           return (
@@ -68,14 +69,19 @@ export function TabBar({ onCaptureTap }: TabBarProps) {
               key={tab.href}
               href={tab.href}
               className={`
-                flex flex-col items-center gap-0.5 min-w-[64px] py-[var(--space-2)]
-                text-xs font-[family-name:var(--font-body)]
-                transition-colors duration-150
-                ${active ? "text-azul" : "text-gris"}
+                flex flex-col items-center gap-0.5 min-w-[64px] py-(--space-2)
+                text-xs font-[family-name:var(--font-body)] font-medium
+                transition-all duration-200
+                ${active ? "text-azul" : "text-gris hover:text-blanco/70"}
               `}
             >
-              {tab.icon}
+              <div className={`transition-transform duration-200 ${active ? "scale-110" : ""}`}>
+                {tab.icon}
+              </div>
               <span>{tab.label}</span>
+              {active && (
+                <div className="w-1 h-1 rounded-full bg-azul mt-0.5" />
+              )}
             </Link>
           );
         })}

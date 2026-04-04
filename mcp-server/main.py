@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import date, datetime
 
 from dotenv import load_dotenv
@@ -110,6 +111,16 @@ def write_daily_plan(
     total_planned_minutes: int,
 ) -> dict:
     """Upsert a daily plan and mark referenced tasks as 'scheduled'."""
+    UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
+
+    # Filter out blocks with invalid task_ids (LLM sometimes uses names instead of UUIDs)
+    valid_blocks = []
+    for block in time_blocks:
+        tid = block.get("task_id")
+        if tid is None or UUID_RE.match(str(tid)):
+            valid_blocks.append(block)
+        # else: silently drop blocks with non-UUID task_ids
+
     # Upsert the plan
     result = (
         db.table("daily_plans")
@@ -117,7 +128,7 @@ def write_daily_plan(
             {
                 "user_id": user_id,
                 "plan_date": plan_date,
-                "time_blocks": time_blocks,
+                "time_blocks": valid_blocks,
                 "total_planned_minutes": total_planned_minutes,
             },
             on_conflict="user_id,plan_date",
@@ -127,7 +138,7 @@ def write_daily_plan(
     plan_id = result.data[0]["id"]
 
     # Update each referenced task to 'scheduled'
-    task_ids = [b["task_id"] for b in time_blocks if b.get("task_id")]
+    task_ids = [b["task_id"] for b in valid_blocks if b.get("task_id")]
     for task_id in task_ids:
         db.table("tasks").update({"status": "scheduled"}).eq("id", task_id).execute()
 
@@ -377,6 +388,32 @@ def defer_to_tomorrow(user_id: str, task_id: str, plan_date: str) -> dict:
         appended = True
 
     return {"success": True, "task_id": task_id, "appended_to_tomorrow": appended}
+
+
+# ---------------------------------------------------------------------------
+# Tool 13: update_user_settings
+# ---------------------------------------------------------------------------
+@mcp.tool()
+def update_user_settings(user_id: str, settings: dict) -> dict:
+    """Update user settings. Only provided fields are updated."""
+    ALLOWED_FIELDS = {
+        "timezone",
+        "locale",
+        "planning_time",
+        "work_hours_start",
+        "work_hours_end",
+        "max_daily_tasks",
+        "notification_channel",
+    }
+
+    update_data = {k: v for k, v in settings.items() if k in ALLOWED_FIELDS}
+    if not update_data:
+        return {"success": False, "error": "No valid fields to update"}
+
+    update_data["updated_at"] = datetime.now().isoformat()
+
+    db.table("user_settings").update(update_data).eq("user_id", user_id).execute()
+    return {"success": True, "updated_fields": list(update_data.keys())}
 
 
 # ---------------------------------------------------------------------------

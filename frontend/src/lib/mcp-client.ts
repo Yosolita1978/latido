@@ -60,6 +60,7 @@ let requestId = 1;
 export async function callTool(
   toolName: string,
   params: Record<string, unknown>,
+  _retried = false,
 ): Promise<unknown> {
   await ensureInitialized();
 
@@ -83,11 +84,11 @@ export async function callTool(
 
   if (!response.ok) {
     // Session may have expired — reset and retry once
-    if (response.status === 404 || response.status === 406) {
+    if (!_retried && (response.status === 404 || response.status === 406)) {
       sessionId = null;
       initPromise = null;
       await ensureInitialized();
-      return callTool(toolName, params);
+      return callTool(toolName, params, true);
     }
     throw new Error(`MCP server error: ${response.status} ${response.statusText}`);
   }

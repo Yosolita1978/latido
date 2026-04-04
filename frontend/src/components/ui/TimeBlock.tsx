@@ -20,18 +20,24 @@ interface TimeBlockProps {
 }
 
 const energyDotColors = {
-  low: "bg-azul-light",
+  low: "bg-[var(--energy-low)]",
   medium: "bg-amarillo",
   high: "bg-rojo",
 };
 
+const energyGlowColors = {
+  low: "shadow-[0_0_8px_rgba(104,147,192,0.3)]",
+  medium: "shadow-[0_0_8px_rgba(242,201,76,0.3)]",
+  high: "shadow-[0_0_8px_rgba(240,96,96,0.3)]",
+};
+
 const slotLabels: Record<string, string> = {
-  deep_work: "Deep work",
+  deep_work: "Trabajo profundo",
   admin: "Admin",
-  client_work: "Client",
-  learning: "Learning",
+  client_work: "Cliente",
+  learning: "Aprendizaje",
   personal: "Personal",
-  maintenance: "Maintenance",
+  maintenance: "Mantenimiento",
 };
 
 const timePills = [5, 15, 30, 45, 60];
@@ -59,8 +65,12 @@ export function TimeBlock({
 
   if (slotType === "break") {
     return (
-      <div className="flex items-center justify-center py-[var(--space-2)]">
-        <span className="text-xs text-gris">— Descanso {startTime} - {endTime} —</span>
+      <div className="flex items-center gap-(--space-3) py-(--space-2)">
+        <div className="flex-1 h-px bg-blanco/5" />
+        <span className="text-xs text-gris/50 font-[family-name:var(--font-body)]">
+          {startTime} – {endTime}
+        </span>
+        <div className="flex-1 h-px bg-blanco/5" />
       </div>
     );
   }
@@ -91,10 +101,11 @@ export function TimeBlock({
   return (
     <div
       className={`
-        rounded-[var(--radius-lg)] overflow-hidden transition-all duration-300
-        ${featured ? "bg-bg-card-elevated shadow-[var(--shadow-md)]" : "bg-bg-card"}
-        ${completed ? "opacity-50 scale-[0.98]" : ""}
-        ${animating === "complete" ? "opacity-40 scale-95" : ""}
+        rounded-(--radius-lg) overflow-hidden transition-all duration-300 card-glow
+        border border-blanco/[0.04]
+        ${featured ? "bg-bg-card-elevated" : "bg-bg-card"}
+        ${completed ? "opacity-40 scale-[0.98]" : ""}
+        ${animating === "complete" ? "opacity-30 scale-95" : ""}
         ${animating === "defer" ? "translate-x-full opacity-0" : ""}
       `}
     >
@@ -102,30 +113,51 @@ export function TimeBlock({
       <button
         onClick={() => !completed && setExpanded(!expanded)}
         disabled={completed}
-        className="w-full text-left p-[var(--space-4)] flex items-center gap-[var(--space-3)]"
+        className="w-full text-left p-(--space-4) flex items-center gap-(--space-3)"
       >
-        {/* Energy dot */}
-        <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${energyDotColors[energyLevel]}`} />
+        {/* Energy dot with glow */}
+        <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${energyDotColors[energyLevel]} ${featured ? energyGlowColors[energyLevel] : ""}`} />
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <p className={`text-base text-blanco font-medium ${completed ? "line-through" : ""}`}>
+          <p className={`text-[0.938rem] text-blanco font-medium leading-snug ${completed ? "line-through text-gris" : ""}`}>
             {title}
           </p>
-          <p className="text-xs text-gris mt-0.5">
-            {projectName ?? label}
-            {minutes ? ` · ${minutes} min` : ""}
-          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-xs text-gris">{startTime}</span>
+            {projectName && (
+              <>
+                <span className="text-gris/30">·</span>
+                <span className="text-xs text-azul/70">{projectName}</span>
+              </>
+            )}
+            {!projectName && (
+              <>
+                <span className="text-gris/30">·</span>
+                <span className="text-xs text-gris/60">{label}</span>
+              </>
+            )}
+            {minutes > 0 && (
+              <>
+                <span className="text-gris/30">·</span>
+                <span className="text-xs text-gris/60">{minutes}m</span>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Right indicator */}
         <div className="flex-shrink-0">
           {completed ? (
-            <span className="text-verde">✓</span>
+            <div className="w-5 h-5 rounded-full bg-verde/20 flex items-center justify-center">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2.5 6L5 8.5L9.5 4" stroke="var(--talavera-verde)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
           ) : (
             <svg
               width="12" height="12" viewBox="0 0 12 12" fill="none"
-              className={`text-gris/40 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+              className={`text-gris/30 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
             >
               <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
@@ -135,20 +167,20 @@ export function TimeBlock({
 
       {/* Expanded action row */}
       {expanded && !completed && (
-        <div className="px-[var(--space-4)] pb-[var(--space-4)]">
+        <div className="px-(--space-4) pb-(--space-4) animate-fade-in">
           {/* Time pills (shown after tapping Hecho) */}
           {showTimePills && (
-            <div className="flex items-center gap-[var(--space-2)] mb-[var(--space-3)] flex-wrap">
+            <div className="flex items-center gap-(--space-2) mb-(--space-3) flex-wrap">
               <span className="text-xs text-gris">¿Cuánto tomó?</span>
               {timePills.map((t) => (
                 <button
                   key={t}
                   onClick={() => handleComplete(t)}
                   className={`
-                    px-2.5 py-1 rounded-full text-xs transition-colors
+                    px-3 py-1.5 rounded-full text-xs font-medium transition-all
                     ${t === minutes
                       ? "bg-verde text-bg-primary"
-                      : "bg-bg-card-elevated text-gris border border-blanco/10"
+                      : "bg-bg-card-elevated text-gris border border-blanco/[0.06] hover:border-blanco/10"
                     }
                   `}
                 >
@@ -157,7 +189,7 @@ export function TimeBlock({
               ))}
               <button
                 onClick={() => handleComplete(minutes)}
-                className="px-2.5 py-1 rounded-full text-xs bg-verde/20 text-verde"
+                className="px-3 py-1.5 rounded-full text-xs font-medium bg-verde/15 text-verde border border-verde/20"
               >
                 como planeado
               </button>
@@ -166,32 +198,34 @@ export function TimeBlock({
 
           {/* Action buttons */}
           {!showTimePills && (
-            <div className="flex items-center gap-[var(--space-2)]">
+            <div className="flex items-center gap-(--space-2)">
               <button
                 onClick={() => setShowTimePills(true)}
-                className="flex-1 min-h-[44px] rounded-[var(--radius-md)] bg-verde/15 text-verde text-sm font-medium transition-colors active:bg-verde/25"
+                className="flex-1 min-h-[44px] rounded-(--radius-md) bg-verde/10 text-verde text-sm font-semibold transition-all active:bg-verde/20 border border-verde/10"
               >
-                ✓ Hecho
+                Hecho
               </button>
               <button
                 onClick={handleDefer}
-                className="flex-1 min-h-[44px] rounded-[var(--radius-md)] bg-amarillo/15 text-amarillo text-sm font-medium transition-colors active:bg-amarillo/25"
+                className="flex-1 min-h-[44px] rounded-(--radius-md) bg-amarillo/10 text-amarillo text-sm font-semibold transition-all active:bg-amarillo/20 border border-amarillo/10"
               >
-                → Mañana
+                Mañana
               </button>
               <button
                 onClick={handleCancel}
-                className="min-h-[44px] w-11 rounded-[var(--radius-md)] bg-blanco/5 text-gris flex items-center justify-center transition-colors active:bg-blanco/10"
+                className="min-h-[44px] w-11 rounded-(--radius-md) bg-blanco/[0.03] text-gris flex items-center justify-center transition-all active:bg-blanco/[0.06] border border-blanco/[0.04]"
                 aria-label="Cancelar"
               >
-                ✕
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M3.5 3.5L10.5 10.5M10.5 3.5L3.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
               </button>
             </div>
           )}
 
           {/* Defer warning */}
           {deferMsg && (
-            <p className="text-xs text-amarillo/70 text-center mt-[var(--space-2)] animate-pulse">
+            <p className="text-xs text-amarillo/70 text-center mt-(--space-2) animate-pulse font-[family-name:var(--font-body)]">
               {deferMsg}
             </p>
           )}

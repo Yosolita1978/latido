@@ -45,10 +45,38 @@ body {
   font-family: var(--font-body);
 }
 
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Selection color */
+::selection {
+  background: rgba(59, 143, 228, 0.3);
+  color: var(--talavera-blanco);
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--talavera-azul);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Input styles for dark theme */
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+}
+
+select option {
+  background: var(--talavera-bg-card);
+  color: var(--talavera-blanco);
 }

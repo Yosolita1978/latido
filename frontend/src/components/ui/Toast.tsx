@@ -15,7 +15,7 @@ export function Toast({ message, type = "success", onDismiss }: ToastProps) {
     requestAnimationFrame(() => setVisible(true));
     const timer = setTimeout(() => {
       setVisible(false);
-      setTimeout(onDismiss, 200);
+      setTimeout(onDismiss, 300);
     }, 3000);
     return () => clearTimeout(timer);
   }, [onDismiss]);
@@ -23,12 +23,19 @@ export function Toast({ message, type = "success", onDismiss }: ToastProps) {
   return (
     <div
       className={`
-        fixed bottom-20 left-4 right-4 z-50
-        p-[var(--space-4)] rounded-[var(--radius-md)]
-        font-[family-name:var(--font-body)] text-sm
-        transition-all duration-200
-        ${type === "success" ? "bg-verde/20 text-verde border border-verde/30" : "bg-rojo/20 text-rojo border border-rojo/30"}
-        ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}
+        fixed bottom-20 left-4 right-4 z-50 max-w-lg mx-auto
+        px-(--space-4) py-(--space-3) rounded-(--radius-md)
+        font-[family-name:var(--font-body)] text-sm font-medium
+        backdrop-blur-lg border
+        transition-all duration-300
+        ${type === "success"
+          ? "bg-verde/10 text-verde border-verde/20"
+          : "bg-rojo/10 text-rojo border-rojo/20"
+        }
+        ${visible
+          ? "opacity-100 translate-y-0"
+          : "opacity-0 translate-y-4"
+        }
       `}
     >
       {message}
