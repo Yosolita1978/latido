@@ -54,11 +54,13 @@ export default function SettingsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const isOnboarding = searchParams.get("onboarding") === "1";
+  const googleStatus = searchParams.get("google");
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [google, setGoogle] = useState<{ connected: boolean; email: string | null } | null>(null);
 
   useEffect(() => {
     fetch(`/api/settings`)
@@ -81,7 +83,36 @@ export default function SettingsPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    fetch(`/api/google/status`)
+      .then((res) => res.json())
+      .then(setGoogle)
+      .catch(() => setGoogle({ connected: false, email: null }));
   }, []);
+
+  // Show toast based on Google connection status
+  useEffect(() => {
+    if (!googleStatus) return;
+    if (googleStatus === "connected") {
+      setToast("Google Calendar conectado");
+    } else {
+      setToast("No se pudo conectar Google Calendar");
+    }
+    setTimeout(() => setToast(null), 3000);
+  }, [googleStatus]);
+
+  async function handleDisconnectGoogle() {
+    if (!window.confirm("¿Desconectar Google Calendar?")) return;
+    try {
+      await fetch("/api/google/disconnect", { method: "POST" });
+      setGoogle({ connected: false, email: null });
+      setToast("Google Calendar desconectado");
+      setTimeout(() => setToast(null), 2500);
+    } catch {
+      setToast("Error al desconectar");
+      setTimeout(() => setToast(null), 2500);
+    }
+  }
 
   async function handleSave() {
     if (!settings) return;
@@ -240,6 +271,43 @@ export default function SettingsPage() {
           ))}
         </div>
       </SettingsSection>
+
+      {/* Google Calendar */}
+      {!isOnboarding && !isNew && google && (
+        <SettingsSection label="Integraciones">
+          <div className="bg-bg-card rounded-(--radius-md) p-(--space-4) border border-blanco/[0.06] flex items-center justify-between gap-(--space-3)">
+            <div className="flex flex-col gap-1 min-w-0">
+              <span className="text-sm text-blanco font-[family-name:var(--font-body)] font-medium">
+                Google Calendar
+              </span>
+              {google.connected ? (
+                <span className="text-xs text-verde font-[family-name:var(--font-body)] truncate">
+                  Conectado · {google.email}
+                </span>
+              ) : (
+                <span className="text-xs text-gris/60 font-[family-name:var(--font-body)]">
+                  Latido podrá leer tu calendario para planificar mejor.
+                </span>
+              )}
+            </div>
+            {google.connected ? (
+              <button
+                onClick={handleDisconnectGoogle}
+                className="text-xs text-rojo font-[family-name:var(--font-body)] font-medium px-(--space-3) py-(--space-2) rounded-(--radius-md) bg-rojo/10 active:bg-rojo/15 transition-colors flex-shrink-0"
+              >
+                Desconectar
+              </button>
+            ) : (
+              <a
+                href="/api/google/connect"
+                className="text-xs text-azul font-[family-name:var(--font-body)] font-medium px-(--space-3) py-(--space-2) rounded-(--radius-md) bg-azul/10 active:bg-azul/15 transition-colors flex-shrink-0"
+              >
+                Conectar
+              </a>
+            )}
+          </div>
+        </SettingsSection>
+      )}
 
       {/* Save button */}
       <button

@@ -49,6 +49,14 @@ interface PeakWindow {
   end: number;
 }
 
+interface CalendarEvent {
+  id: string;
+  summary: string;
+  start_time: string;
+  end_time: string;
+  is_all_day: boolean;
+}
+
 interface DayViewProps {
   plan: Plan | null;
   projects: ProjectMap;
@@ -56,6 +64,7 @@ interface DayViewProps {
   peakWindow?: PeakWindow;
   taskCount?: number;
   mood?: string | null;
+  calendarEvents?: CalendarEvent[];
 }
 
 const currentEnergyLabels = {
@@ -76,7 +85,7 @@ const moodOptions = [
   { level: "high", icon: "⚡", label: "Alta", color: "bg-rojo/15 text-rojo border-rojo/30" },
 ];
 
-export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { start: 8, end: 12 }, taskCount = 0, mood: initialMood = null }: DayViewProps) {
+export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { start: 8, end: 12 }, taskCount = 0, mood: initialMood = null, calendarEvents = [] }: DayViewProps) {
   useUserId();
   const [plan, setPlan] = useState(initialPlan);
   const [taskStatuses, setTaskStatuses] = useState<Record<string, string>>({});
@@ -359,6 +368,46 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
         label={`${currentEnergyLabels[currentEnergy]}`}
         className={currentEnergyColors[currentEnergy]}
       />
+
+      {/* Calendar events */}
+      {calendarEvents.length > 0 && (
+        <div className="w-full">
+          <div className="flex items-center gap-(--space-2) mb-(--space-3)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-gris/60">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            <span className="text-xs text-gris tracking-[0.15em] uppercase font-[family-name:var(--font-body)] font-medium">
+              En tu calendario
+            </span>
+          </div>
+          <div className="flex flex-col gap-(--space-2)">
+            {calendarEvents.map((event) => (
+              <div
+                key={event.id}
+                className="bg-bg-card/60 rounded-(--radius-md) p-(--space-3) flex items-center gap-(--space-3) border border-blanco/[0.04]"
+              >
+                <div className="w-1 h-8 rounded-full bg-azul/40 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-blanco/90 truncate font-[family-name:var(--font-body)]">
+                    {event.summary}
+                  </p>
+                  <span className="text-xs text-gris/60 font-[family-name:var(--font-body)]">
+                    {event.is_all_day
+                      ? "Todo el día"
+                      : `${event.start_time} – ${event.end_time}`}
+                  </span>
+                </div>
+                <span className="text-xs text-gris/40 font-[family-name:var(--font-body)] flex-shrink-0">
+                  Google
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Empty plan — all tasks done or deferred */}
       {activeBlocks.length === 0 && (

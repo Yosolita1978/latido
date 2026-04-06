@@ -1,6 +1,7 @@
 import { chat, embed, parseJSON } from "@/lib/openai";
 import { callTool } from "@/lib/mcp-client";
 import { requireUser } from "@/lib/auth";
+import { getTodayEvents } from "@/lib/google-calendar";
 
 interface TimeBlock {
   task_id: string;
@@ -96,6 +97,14 @@ export async function POST(request: Request) {
   const tasks: Task[] = Array.isArray(rawTasks) ? rawTasks : [];
   const projects: Project[] = Array.isArray(rawProjects) ? rawProjects : [];
 
+  // Fetch calendar events (if Google is connected); silently fail if not
+  let calendarEvents: Awaited<ReturnType<typeof getTodayEvents>> = [];
+  try {
+    calendarEvents = await getTodayEvents(user_id, settings.timezone);
+  } catch {
+    // Calendar fetch failed — proceed without events
+  }
+
   // Step 5: Generate context embedding and fetch relevant patterns
   const dayOfWeek = getDayOfWeek(plan_date);
   const commitmentNames = commitmentsData.commitments.map((c) => c.name).join(", ");
@@ -114,7 +123,18 @@ export async function POST(request: Request) {
   const totalWorkMinutes = workEnd - workStart;
   const committedMinutesPerDay = (commitmentsData.total_committed_hours_per_week / 5) * 60;
   const lunchBreak = 60;
-  const availableMinutes = Math.round(totalWorkMinutes - committedMinutesPerDay - lunchBreak);
+
+  // Calendar events that overlap with work hours consume time
+  const calendarMinutesInWorkHours = calendarEvents.reduce((sum, ev) => {
+    if (ev.is_all_day) return sum;
+    const evStart = timeToMinutes(ev.start_time);
+    const evEnd = timeToMinutes(ev.end_time);
+    const overlapStart = Math.max(evStart, workStart);
+    const overlapEnd = Math.min(evEnd, workEnd);
+    return sum + Math.max(0, overlapEnd - overlapStart);
+  }, 0);
+
+  const availableMinutes = Math.round(totalWorkMinutes - committedMinutesPerDay - lunchBreak - calendarMinutesInWorkHours);
 
   // Step 7: Build project lookup for task formatting
   const projectsById = new Map(projects.map((p) => [p.id, p]));
@@ -138,6 +158,14 @@ export async function POST(request: Request) {
     ? patterns.map((p) => `- ${p.pattern_key}: ${JSON.stringify(p.pattern_value)} (confidence: ${p.confidence})`).join("\n")
     : "No patterns learned yet.";
 
+  const calendarFormatted = calendarEvents.length > 0
+    ? calendarEvents
+        .map((ev) => ev.is_all_day
+          ? `- "${ev.summary}" (todo el día)`
+          : `- ${ev.start_time}–${ev.end_time}: "${ev.summary}"`)
+        .join("\n")
+    : "No calendar events today.";
+
   // Step 8: Call OpenAI
   const systemPrompt = `You are the Day Architect for Latido, a daily planner for solopreneurs.
 
@@ -149,6 +177,9 @@ Maximum tasks per day: ${settings.max_daily_tasks ?? "no limit set"}
 
 USER PATTERNS (learned from past behavior):
 ${patternsFormatted}
+
+CALENDAR EVENTS TODAY (already scheduled — you MUST plan around these, never overlap):
+${calendarFormatted}
 
 ACTIVE COMMITMENTS (already consuming time):
 ${commitmentsFormatted}
@@ -185,6 +216,7 @@ Return ONLY valid JSON:
 
 Rules:
 - ONLY schedule tasks from the AVAILABLE TASKS list using their exact UUID.
+- NEVER schedule a task during a CALENDAR EVENT TODAY time slot. Calendar events are immutable meetings — work around them.
 - Respect the available_minutes ceiling. Do NOT overplan.
 - If patterns indicate the user completes fewer tasks than planned, plan fewer tasks.
 - Schedule high-energy tasks during morning hours (before 12:00).

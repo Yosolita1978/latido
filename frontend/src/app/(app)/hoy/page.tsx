@@ -1,6 +1,7 @@
 import { callTool } from "@/lib/mcp-client";
 import { requireUser } from "@/lib/auth";
 import { DayView } from "@/components/hoy/DayView";
+import { getTodayEvents } from "@/lib/google-calendar";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -40,19 +41,23 @@ function getTodayDate(): string {
   return new Date().toISOString().split("T")[0];
 }
 
+interface UserSettings {
+  timezone: string;
+}
+
 export default async function HoyPage() {
   const user = await requireUser();
   const planDate = getTodayDate();
 
   // Check if user has settings — if not, redirect to onboarding
-  let hasSettings = true;
+  let settings: UserSettings | null = null;
   try {
-    await callTool("get_user_settings", { user_id: user.id });
+    settings = (await callTool("get_user_settings", { user_id: user.id })) as UserSettings;
   } catch {
-    hasSettings = false;
+    settings = null;
   }
 
-  if (!hasSettings) {
+  if (!settings) {
     redirect("/settings?onboarding=1");
   }
 
@@ -74,6 +79,14 @@ export default async function HoyPage() {
   const rawTasks = await callTool("get_unscheduled_tasks", { user_id: user.id });
   const taskCount = Array.isArray(rawTasks) ? rawTasks.length : 0;
 
+  // Fetch calendar events (silently fail if Google not connected)
+  let calendarEvents: Awaited<ReturnType<typeof getTodayEvents>> = [];
+  try {
+    calendarEvents = await getTodayEvents(user.id, settings.timezone);
+  } catch {
+    // Ignore — show plan without calendar
+  }
+
   return (
     <DayView
       plan={plan}
@@ -81,6 +94,7 @@ export default async function HoyPage() {
       planDate={planDate}
       taskCount={taskCount}
       mood={plan?.mood ?? null}
+      calendarEvents={calendarEvents}
     />
   );
 }
