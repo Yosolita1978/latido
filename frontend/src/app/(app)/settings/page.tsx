@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { TEMP_USER_ID } from "@/lib/constants";
+import { useUserId } from "@/components/AuthProvider";
 
 const TIMEZONES = [
   { value: "America/Mexico_City", label: "Ciudad de México (CST)" },
@@ -39,24 +40,44 @@ function formatTime(time: string): string {
   return time.slice(0, 5);
 }
 
+const DEFAULT_SETTINGS: UserSettings = {
+  timezone: "America/Mexico_City",
+  work_hours_start: "09:00",
+  work_hours_end: "18:00",
+  planning_time: "morning",
+  max_daily_tasks: null,
+  notification_channel: "email",
+};
+
 export default function SettingsPage() {
+  useUserId();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const isOnboarding = searchParams.get("onboarding") === "1";
   const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [isNew, setIsNew] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/settings?user_id=${TEMP_USER_ID}`)
+    fetch(`/api/settings`)
       .then((res) => res.json())
       .then((data) => {
-        setSettings({
-          timezone: data.timezone,
-          work_hours_start: formatTime(data.work_hours_start),
-          work_hours_end: formatTime(data.work_hours_end),
-          planning_time: data.planning_time,
-          max_daily_tasks: data.max_daily_tasks,
-          notification_channel: data.notification_channel,
-        });
+        if (!data || !data.timezone) {
+          // New user — no settings yet
+          setSettings(DEFAULT_SETTINGS);
+          setIsNew(true);
+        } else {
+          setSettings({
+            timezone: data.timezone,
+            work_hours_start: formatTime(data.work_hours_start),
+            work_hours_end: formatTime(data.work_hours_end),
+            planning_time: data.planning_time,
+            max_daily_tasks: data.max_daily_tasks,
+            notification_channel: data.notification_channel,
+          });
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -70,13 +91,14 @@ export default function SettingsPage() {
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: TEMP_USER_ID,
-          ...settings,
-        }),
+        body: JSON.stringify(settings),
       });
       const data = await res.json();
       if (data.success) {
+        if (isOnboarding || isNew) {
+          router.push("/hoy");
+          return;
+        }
         setToast("Configuración guardada");
         setTimeout(() => setToast(null), 2500);
       } else {
@@ -113,16 +135,29 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-(--space-6) py-(--space-4) animate-fade-slide-up">
+      {(isOnboarding || isNew) && (
+        <div className="bg-azul/10 border border-azul/20 rounded-(--radius-lg) p-(--space-4) text-center">
+          <p className="text-blanco text-sm font-[family-name:var(--font-heading)] italic">
+            Bienvenida a Latido
+          </p>
+          <p className="text-gris text-xs mt-1 font-[family-name:var(--font-body)]">
+            Antes de empezar, configura tu horario de trabajo.
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="font-[family-name:var(--font-heading)] text-xl text-blanco italic">
           Ajustes
         </h1>
-        <Link
-          href="/proyectos"
-          className="text-xs text-azul font-[family-name:var(--font-body)] font-medium hover:text-azul-light transition-colors"
-        >
-          Proyectos
-        </Link>
+        {!isOnboarding && !isNew && (
+          <Link
+            href="/proyectos"
+            className="text-xs text-azul font-[family-name:var(--font-body)] font-medium hover:text-azul-light transition-colors"
+          >
+            Proyectos
+          </Link>
+        )}
       </div>
 
       {/* Timezone */}
@@ -212,7 +247,7 @@ export default function SettingsPage() {
         disabled={saving}
         className="w-full bg-azul text-bg-primary font-[family-name:var(--font-body)] font-semibold text-sm py-(--space-3) rounded-(--radius-md) active:scale-[0.98] transition-all disabled:opacity-40 shadow-[0_4px_16px_rgba(59,143,228,0.25)]"
       >
-        {saving ? "Guardando..." : "Guardar cambios"}
+        {saving ? "Guardando..." : (isOnboarding || isNew) ? "Empezar a usar Latido" : "Guardar cambios"}
       </button>
 
       {/* Toast */}

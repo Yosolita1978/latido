@@ -1,6 +1,6 @@
 import { callTool } from "@/lib/mcp-client";
-import { TEMP_USER_ID } from "@/lib/constants";
-import { createServerClient } from "@/lib/supabase";
+import { requireUser } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase";
 import { ReflectionView } from "@/components/reflexion/ReflectionView";
 import { PatronesView } from "@/components/reflexion/PatronesView";
 
@@ -20,15 +20,17 @@ function getTodayDate(): string {
 }
 
 export default async function PatronesPage() {
+  const user = await requireUser();
+
   const [plan, patterns] = await Promise.all([
     callTool("get_todays_plan", {
-      user_id: TEMP_USER_ID,
+      user_id: user.id,
       plan_date: getTodayDate(),
     }) as Promise<Plan | null>,
-    createServerClient()
+    createAdminClient()
       .from("user_patterns")
       .select("id, pattern_key, pattern_value, confidence, last_updated")
-      .eq("user_id", TEMP_USER_ID)
+      .eq("user_id", user.id)
       .order("confidence", { ascending: false })
       .then((res) => res.data ?? []),
   ]);

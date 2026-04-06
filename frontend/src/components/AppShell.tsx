@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { TabBar } from "@/components/ui/TabBar";
 import { CaptureSheet } from "@/components/capture/CaptureSheet";
-import { TEMP_USER_ID } from "@/lib/constants";
+import { useUserId } from "@/components/AuthProvider";
 
 interface Project {
   id: string;
@@ -12,11 +12,12 @@ interface Project {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const userId = useUserId();
   const [captureOpen, setCaptureOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    fetch(`/api/projects?user_id=${TEMP_USER_ID}`)
+    fetch(`/api/projects`)
       .then((res) => res.ok ? res.json() : [])
       .then((data) => setProjects(
         data
@@ -24,7 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           .map((p: Project) => ({ id: p.id, name: p.name }))
       ))
       .catch(() => {});
-  }, []);
+  }, [userId]);
 
   return (
     <>

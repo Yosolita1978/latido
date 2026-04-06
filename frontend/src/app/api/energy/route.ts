@@ -1,16 +1,18 @@
-import { createServerClient } from "@/lib/supabase";
+import { createAdminClient } from "@/lib/supabase";
+import { requireUser } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const { user_id, energy_level } = await request.json();
+  const user = await requireUser();
+  const { energy_level } = await request.json();
 
-  if (!user_id || !energy_level) {
+  if (!energy_level) {
     return Response.json(
-      { error: "user_id and energy_level are required" },
+      { error: "energy_level is required" },
       { status: 400 },
     );
   }
 
-  const db = createServerClient();
+  const db = createAdminClient();
   const today = new Date().toISOString().split("T")[0];
 
   // Upsert into daily_plans with mood
@@ -18,7 +20,7 @@ export async function POST(request: Request) {
     .from("daily_plans")
     .upsert(
       {
-        user_id,
+        user_id: user.id,
         plan_date: today,
         mood: energy_level,
         time_blocks: [],
@@ -32,7 +34,7 @@ export async function POST(request: Request) {
     await db
       .from("daily_plans")
       .update({ mood: energy_level })
-      .eq("user_id", user_id)
+      .eq("user_id", user.id)
       .eq("plan_date", today);
   }
 

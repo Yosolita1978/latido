@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { callTool } from "@/lib/mcp-client";
-import { TEMP_USER_ID } from "@/lib/constants";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +39,12 @@ const energyDotColors: Record<string, string> = {
 };
 
 export default async function MananaPage() {
+  const user = await requireUser();
   const tomorrowDate = getTomorrowDate();
 
   const [rawTasks, rawProjects] = await Promise.all([
-    callTool("get_unscheduled_tasks", { user_id: TEMP_USER_ID }),
-    callTool("get_projects", { user_id: TEMP_USER_ID }),
+    callTool("get_unscheduled_tasks", { user_id: user.id }),
+    callTool("get_projects", { user_id: user.id }),
   ]);
 
   const tasks: Task[] = Array.isArray(rawTasks) ? rawTasks : [];

@@ -1,8 +1,10 @@
 const MCP_SERVER_URL = process.env.MCP_SERVER_URL ?? "http://localhost:8080";
+const MCP_API_KEY = process.env.MCP_API_KEY ?? "";
 
-const HEADERS = {
+const HEADERS: Record<string, string> = {
   "Content-Type": "application/json",
   Accept: "application/json, text/event-stream",
+  Authorization: `Bearer ${MCP_API_KEY}`,
 };
 
 let sessionId: string | null = null;

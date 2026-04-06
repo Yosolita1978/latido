@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Toast } from "@/components/ui/Toast";
-import { TEMP_USER_ID } from "@/lib/constants";
 
 interface Project {
   id: string;
@@ -45,12 +44,18 @@ const timeOptions = [
   { minutes: 120, label: "2h" },
 ];
 
+const priorityOptions = [
+  { level: "low", label: "Puede esperar", activeClass: "bg-gris/15 text-gris border-gris/30" },
+  { level: "medium", label: "Normal", activeClass: "bg-azul/15 text-azul border-azul/30" },
+  { level: "high", label: "Urgente", activeClass: "bg-rojo/15 text-rojo border-rojo/30" },
+];
+
 export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
   const [rawText, setRawText] = useState("");
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
-  const [showOptions, setShowOptions] = useState(false);
   const [selectedEnergy, setSelectedEnergy] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<number | null>(null);
+  const [selectedPriority, setSelectedPriority] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [matches, setMatches] = useState<SearchMatch[]>([]);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -71,9 +76,9 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
     } else {
       setRawText("");
       setSelectedProject(null);
-      setShowOptions(false);
       setSelectedEnergy(null);
       setSelectedTime(null);
+      setSelectedPriority(null);
       setMatches([]);
     }
   }, [open]);
@@ -94,7 +99,7 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
         const response = await fetch("/api/search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: TEMP_USER_ID, query: text }),
+          body: JSON.stringify({ query: text }),
         });
         if (response.ok) {
           const results = await response.json();
@@ -109,8 +114,8 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
   // Auto-expand textarea
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = "80px";
-      textareaRef.current.style.height = Math.max(80, textareaRef.current.scrollHeight) + "px";
+      textareaRef.current.style.height = "56px";
+      textareaRef.current.style.height = Math.max(56, textareaRef.current.scrollHeight) + "px";
     }
   }, [rawText]);
 
@@ -141,6 +146,7 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
     }
     if (selectedEnergy) text += ` [energy: ${selectedEnergy}]`;
     if (selectedTime) text += ` [estimated: ${selectedTime}min]`;
+    if (selectedPriority) text += ` [priority: ${selectedPriority}]`;
 
     setLoading(true);
     try {
@@ -148,7 +154,6 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: TEMP_USER_ID,
           raw_text: text,
           capture_mode: "tarea",
         }),
@@ -186,14 +191,14 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
           transition-transform duration-300 ease-out
           ${open ? "translate-y-0" : "translate-y-full"}
         `}
-        style={{ height: "60vh", maxHeight: "600px" }}
+        style={{ maxHeight: "85vh" }}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-2">
           <div className="w-10 h-1 rounded-full bg-blanco/15" />
         </div>
 
-        <div className="flex flex-col h-[calc(100%-20px)] px-(--space-4) pb-(--space-4)">
+        <div className="flex flex-col px-(--space-4) pb-(--space-4) overflow-y-auto" style={{ maxHeight: "calc(85vh - 20px)" }}>
           {/* Textarea */}
           <textarea
             ref={textareaRef}
@@ -201,32 +206,34 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
             value={rawText}
             onChange={(e) => handleTextChange(e.target.value)}
             disabled={loading}
-            className="w-full min-h-[80px] max-h-[160px] p-(--space-4) bg-bg-card text-blanco text-base rounded-(--radius-lg) border border-blanco/[0.06] focus:border-azul/50 focus:outline-none placeholder:text-gris/40 font-[family-name:var(--font-body)] resize-none transition-colors"
+            className="w-full min-h-[56px] max-h-[120px] p-(--space-3) bg-bg-card text-blanco text-base rounded-(--radius-lg) border border-blanco/[0.06] focus:border-azul/50 focus:outline-none placeholder:text-gris/40 font-[family-name:var(--font-body)] resize-none transition-colors"
           />
 
           {/* Project chips — horizontal scroll */}
-          <div className="flex gap-(--space-2) overflow-x-auto py-(--space-3) scrollbar-hide">
-            {projects.map((project) => (
-              <button
-                key={project.id}
-                onClick={() =>
-                  setSelectedProject(selectedProject === project.id ? null : project.id)
-                }
-                disabled={loading}
-                className={`
-                  whitespace-nowrap px-(--space-3) py-1.5 rounded-full text-xs font-medium
-                  font-[family-name:var(--font-body)] transition-all flex-shrink-0
-                  ${
-                    selectedProject === project.id
-                      ? "bg-azul text-bg-primary"
-                      : "bg-bg-card text-gris border border-blanco/[0.06] active:border-blanco/15"
+          {projects.length > 0 && (
+            <div className="flex gap-(--space-2) overflow-x-auto py-(--space-3) scrollbar-hide">
+              {projects.map((project) => (
+                <button
+                  key={project.id}
+                  onClick={() =>
+                    setSelectedProject(selectedProject === project.id ? null : project.id)
                   }
-                `}
-              >
-                {project.name}
-              </button>
-            ))}
-          </div>
+                  disabled={loading}
+                  className={`
+                    whitespace-nowrap px-(--space-3) py-1.5 rounded-full text-xs font-medium
+                    font-[family-name:var(--font-body)] transition-all flex-shrink-0
+                    ${
+                      selectedProject === project.id
+                        ? "bg-azul text-bg-primary"
+                        : "bg-bg-card text-gris border border-blanco/[0.06] active:border-blanco/15"
+                    }
+                  `}
+                >
+                  {project.name}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Search match preview */}
           {matches.length > 0 && (
@@ -240,44 +247,20 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
             </button>
           )}
 
-          {/* More options toggle */}
-          <button
-            onClick={() => setShowOptions(!showOptions)}
-            className="text-xs text-gris/50 text-left py-1 font-[family-name:var(--font-body)] transition-colors hover:text-gris/80"
-          >
-            {showOptions ? "menos opciones" : "más opciones"}
-          </button>
-
-          {showOptions && (
-            <div className="flex items-center gap-(--space-2) py-(--space-2) animate-fade-in">
-              {/* Energy icons */}
-              {energyOptions.map((opt) => (
+          {/* Options — always visible */}
+          <div className="flex flex-col gap-(--space-4) py-(--space-3)">
+            {/* Priority */}
+            <OptionRow label="Prioridad">
+              {priorityOptions.map((opt) => (
                 <button
                   key={opt.level}
-                  onClick={() => setSelectedEnergy(selectedEnergy === opt.level ? null : opt.level)}
+                  onClick={() => setSelectedPriority(selectedPriority === opt.level ? null : opt.level)}
+                  disabled={loading}
                   className={`
-                    min-w-[48px] min-h-[48px] rounded-(--radius-md) text-sm
-                    flex items-center justify-center border-2 transition-all
-                    ${selectedEnergy === opt.level
-                      ? opt.activeClass
-                      : "bg-bg-card text-gris border-blanco/[0.06]"
-                    }
-                  `}
-                  aria-label={`Energía ${opt.label}`}
-                >
-                  {opt.icon}
-                </button>
-              ))}
-              <div className="w-px h-6 bg-blanco/[0.06]" />
-              {/* Time pills */}
-              {timeOptions.map((opt) => (
-                <button
-                  key={opt.minutes}
-                  onClick={() => setSelectedTime(selectedTime === opt.minutes ? null : opt.minutes)}
-                  className={`
-                    min-h-[48px] px-2.5 rounded-(--radius-md) text-xs font-medium transition-all
-                    ${selectedTime === opt.minutes
-                      ? "bg-azul text-bg-primary"
+                    px-(--space-3) py-1.5 rounded-full text-xs font-medium
+                    font-[family-name:var(--font-body)] transition-all
+                    ${selectedPriority === opt.level
+                      ? opt.activeClass + " border-2"
                       : "bg-bg-card text-gris border border-blanco/[0.06]"
                     }
                   `}
@@ -285,16 +268,59 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
                   {opt.label}
                 </button>
               ))}
-            </div>
-          )}
+            </OptionRow>
+
+            {/* Energy */}
+            <OptionRow label="Energía que requiere">
+              {energyOptions.map((opt) => (
+                <button
+                  key={opt.level}
+                  onClick={() => setSelectedEnergy(selectedEnergy === opt.level ? null : opt.level)}
+                  disabled={loading}
+                  className={`
+                    flex items-center gap-1.5 px-(--space-3) py-1.5 rounded-full text-xs font-medium
+                    font-[family-name:var(--font-body)] transition-all
+                    ${selectedEnergy === opt.level
+                      ? opt.activeClass + " border-2"
+                      : "bg-bg-card text-gris border border-blanco/[0.06]"
+                    }
+                  `}
+                >
+                  <span>{opt.icon}</span>
+                  <span>{opt.label}</span>
+                </button>
+              ))}
+            </OptionRow>
+
+            {/* Time */}
+            <OptionRow label="Tiempo estimado">
+              {timeOptions.map((opt) => (
+                <button
+                  key={opt.minutes}
+                  onClick={() => setSelectedTime(selectedTime === opt.minutes ? null : opt.minutes)}
+                  disabled={loading}
+                  className={`
+                    px-(--space-3) py-1.5 rounded-full text-xs font-medium
+                    font-[family-name:var(--font-body)] transition-all
+                    ${selectedTime === opt.minutes
+                      ? "bg-azul/15 text-azul border-2 border-azul/30"
+                      : "bg-bg-card text-gris border border-blanco/[0.06]"
+                    }
+                  `}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </OptionRow>
+          </div>
 
           {/* Spacer */}
-          <div className="flex-1" />
+          <div className="flex-1 min-h-[var(--space-4)]" />
 
           {/* Submit button */}
           <button
             onClick={handleSubmit}
-            disabled={loading || !rawText.trim()}
+            disabled={loading || rawText.trim().length === 0}
             className={`
               w-full min-h-[48px] rounded-(--radius-md)
               font-[family-name:var(--font-body)] font-semibold text-base
@@ -316,5 +342,18 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
         <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
       )}
     </>
+  );
+}
+
+function OptionRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-(--space-2)">
+      <span className="text-xs text-gris/70 font-[family-name:var(--font-body)]">
+        {label}
+      </span>
+      <div className="flex gap-(--space-2) flex-wrap">
+        {children}
+      </div>
+    </div>
   );
 }

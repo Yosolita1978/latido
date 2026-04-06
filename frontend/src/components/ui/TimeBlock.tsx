@@ -61,6 +61,7 @@ export function TimeBlock({
   const [expanded, setExpanded] = useState(false);
   const [showTimePills, setShowTimePills] = useState(false);
   const [animating, setAnimating] = useState<"complete" | "defer" | null>(null);
+  const [hidden, setHidden] = useState(false);
   const [deferMsg, setDeferMsg] = useState<string | null>(null);
 
   if (slotType === "break") {
@@ -75,12 +76,17 @@ export function TimeBlock({
     );
   }
 
+  if (hidden) return null;
+
   const label = slotLabels[slotType] ?? slotType;
   const minutes = estimatedMinutes ?? 0;
 
   function handleComplete(actualMinutes: number) {
     setAnimating("complete");
-    setTimeout(() => onComplete(taskId, actualMinutes), 300);
+    setTimeout(() => {
+      setHidden(true);
+      onComplete(taskId, actualMinutes);
+    }, 300);
   }
 
   function handleDefer() {
@@ -90,7 +96,10 @@ export function TimeBlock({
       setTimeout(() => setDeferMsg(null), 2000);
     }
     setAnimating("defer");
-    setTimeout(() => onDefer(taskId), 400);
+    setTimeout(() => {
+      setHidden(true);
+      onDefer(taskId);
+    }, 400);
   }
 
   function handleCancel() {
@@ -106,7 +115,7 @@ export function TimeBlock({
         ${featured ? "bg-bg-card-elevated" : "bg-bg-card"}
         ${completed ? "opacity-40 scale-[0.98]" : ""}
         ${animating === "complete" ? "opacity-30 scale-95" : ""}
-        ${animating === "defer" ? "translate-x-full opacity-0" : ""}
+        ${animating === "defer" ? "opacity-0 scale-95" : ""}
       `}
     >
       {/* Main card — tap to expand */}
@@ -170,28 +179,30 @@ export function TimeBlock({
         <div className="px-(--space-4) pb-(--space-4) animate-fade-in">
           {/* Time pills (shown after tapping Hecho) */}
           {showTimePills && (
-            <div className="flex items-center gap-(--space-2) mb-(--space-3) flex-wrap">
-              <span className="text-xs text-gris">¿Cuánto tomó?</span>
-              {timePills.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => handleComplete(t)}
-                  className={`
-                    px-3 py-1.5 rounded-full text-xs font-medium transition-all
-                    ${t === minutes
-                      ? "bg-verde text-bg-primary"
-                      : "bg-bg-card-elevated text-gris border border-blanco/[0.06] hover:border-blanco/10"
-                    }
-                  `}
-                >
-                  {t}m
-                </button>
-              ))}
+            <div className="flex flex-col gap-(--space-3)">
+              <div className="flex items-center gap-(--space-2) flex-wrap">
+                <span className="text-xs text-gris">¿Cuánto tomó?</span>
+                {timePills.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => handleComplete(t)}
+                    className={`
+                      px-3 py-1.5 rounded-full text-xs font-medium transition-all
+                      ${t === minutes
+                        ? "bg-verde text-bg-primary"
+                        : "bg-bg-card-elevated text-gris border border-blanco/[0.06] hover:border-blanco/10"
+                      }
+                    `}
+                  >
+                    {t}m
+                  </button>
+                ))}
+              </div>
               <button
                 onClick={() => handleComplete(minutes)}
-                className="px-3 py-1.5 rounded-full text-xs font-medium bg-verde/15 text-verde border border-verde/20"
+                className="w-full min-h-[44px] rounded-(--radius-md) bg-verde/15 text-verde text-sm font-semibold transition-all active:bg-verde/25 border border-verde/20"
               >
-                como planeado
+                Completar{minutes > 0 ? ` (${minutes}m como planeado)` : ""}
               </button>
             </div>
           )}

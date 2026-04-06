@@ -1,26 +1,28 @@
-import { createServerClient } from "@/lib/supabase";
+import { createAdminClient } from "@/lib/supabase";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const user = await requireUser();
   const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("user_id");
   const planDate = searchParams.get("plan_date");
 
-  if (!userId || !planDate) {
+  if (!planDate) {
     return Response.json(
-      { error: "user_id and plan_date are required" },
+      { error: "plan_date is required" },
       { status: 400 },
     );
   }
 
+  const userId = user.id;
   const encoder = new TextEncoder();
   let heartbeatInterval: ReturnType<typeof setInterval>;
-  let supabase: ReturnType<typeof createServerClient>;
+  let supabase: ReturnType<typeof createAdminClient>;
 
   const stream = new ReadableStream({
     start(controller) {
-      supabase = createServerClient();
+      supabase = createAdminClient();
 
       // Send initial connection event
       controller.enqueue(encoder.encode("event: connected\ndata: {}\n\n"));

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
-import { TEMP_USER_ID } from "@/lib/constants";
 
 interface Project {
   id: string;
@@ -49,7 +48,6 @@ export function ProjectsList({ projects: initialProjects }: ProjectsListProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: TEMP_USER_ID,
           name: newName.trim(),
           hours_per_week_needed: newHours ? parseFloat(newHours) : null,
         }),

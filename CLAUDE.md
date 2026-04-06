@@ -8,10 +8,17 @@ AI-powered daily planner for solopreneurs. Three AI agents (Capture, Day Archite
 
 - **Frontend:** Next.js 16 (App Router, Server Components by default), TypeScript strict, Tailwind CSS v4, React 19
 - **Database:** Supabase (PostgreSQL + pgvector + RLS on every table)
-- **Auth:** Supabase Auth (magic link, email-based) — not yet implemented
+- **Auth:** Supabase Auth (magic link, email-based) via `@supabase/ssr`
 - **AI:** OpenAI (GPT for agents, text-embedding for embeddings)
-- **MCP Server:** FastMCP (Python) with 12 tools, runs on port 8080
-- **Hosting:** Vercel (frontend) + Railway (MCP server) — not yet deployed
+- **MCP Server:** FastMCP (Python) with 13 tools, runs on port 8080, protected by API key middleware
+- **Hosting:** Vercel (frontend) + Render (MCP server) — not yet deployed
+
+## Security
+
+- **MCP API key:** Shared `MCP_API_KEY` between frontend and MCP server. All requests require `Authorization: Bearer <key>`. Middleware in `mcp-server/main.py` rejects unauthorized calls with 401.
+- **Auth:** Supabase Auth with magic link. `proxy.ts` refreshes sessions and redirects unauthenticated users to `/login`. Auth callback at `/auth/callback`.
+- **user_id:** Never trusted from the client. All API routes extract `user_id` from the Supabase session via `requireUser()` in `src/lib/auth.ts`. Client components receive `userId` via React context (`AuthProvider`).
+- **Admin client:** `createAdminClient()` in `src/lib/supabase.ts` uses `SUPABASE_SERVICE_ROLE_KEY` (bypasses RLS). Used only in server-side code for operations that need cross-user access or realtime subscriptions.
 
 ## Code Principles
 
@@ -29,10 +36,13 @@ AI-powered daily planner for solopreneurs. Three AI agents (Capture, Day Archite
 ```
 frontend/           Next.js app
   src/app/          App Router pages and API routes
+  src/app/login/    Magic link login page
+  src/app/auth/     Auth callback route
   src/components/   React components by feature
-  src/lib/          Shared utilities (mcp-client, supabase, openai, enfoque)
+  src/lib/          Shared utilities (mcp-client, supabase, auth, openai, enfoque)
+  src/proxy.ts      Auth proxy (Next.js 16 — replaces middleware.ts)
   src/styles/       Talavera design tokens
-mcp-server/         Python FastMCP server (main.py, 12 tools)
+mcp-server/         Python FastMCP server (main.py, 13 tools)
 supabase/           Database migrations (001-004)
 ```
 
@@ -69,9 +79,9 @@ Implementation: `frontend/src/lib/enfoque.ts`
 - `user_settings` — timezone, work hours, preferences
 - `commitments` — recurring obligations
 
-## MCP Tools (12)
+## MCP Tools (13)
 
-`get_unscheduled_tasks`, `get_active_commitments`, `get_user_patterns`, `get_user_settings`, `write_daily_plan`, `update_task_status`, `capture_task`, `search_tasks_hybrid`, `write_pattern`, `get_todays_plan`, `get_projects`, `defer_to_tomorrow`
+`get_unscheduled_tasks`, `get_active_commitments`, `get_user_patterns`, `get_user_settings`, `write_daily_plan`, `update_task_status`, `capture_task`, `search_tasks_hybrid`, `write_pattern`, `get_todays_plan`, `get_projects`, `defer_to_tomorrow`, `update_user_settings`
 
 ## Design System (Talavera)
 
@@ -82,21 +92,17 @@ Dark theme with Mexican ceramic tile aesthetic. Color tokens defined in `fronten
 
 ## Environment Variables
 
-Frontend needs: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `MCP_SERVER_URL`
+Frontend needs: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `MCP_SERVER_URL`, `MCP_API_KEY`
 
-MCP server needs: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+MCP server needs: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MCP_API_KEY`
 
 ## Known Issues
 
 - SSE reconnection doesn't handle MCP server restarts (needs exponential backoff)
 - Energy badge "baja" shows blue at night — should be muted gray-blue
-- `TEMP_USER_ID` hardcoded in `frontend/src/lib/constants.ts` — replace with real auth
-- No Supabase Auth yet (magic link planned)
 
 ## Not Yet Built
 
-- User settings screen (`/settings`)
 - Calendar integration (Google Calendar, Gmail, Slack, Discord)
 - n8n CRON workflows (blocked until deploy)
 - End-of-day reflection modal
-- Supabase Auth (magic link)

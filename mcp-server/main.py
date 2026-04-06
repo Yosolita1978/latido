@@ -3,17 +3,33 @@ import os
 import re
 from datetime import date, datetime
 
+import uvicorn
 from dotenv import load_dotenv
 from fastmcp import FastMCP
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 from supabase import Client, create_client
 
 load_dotenv()
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+MCP_API_KEY = os.environ["MCP_API_KEY"]
 
 db: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 mcp = FastMCP("latido-tools")
+
+
+# ---------------------------------------------------------------------------
+# HTTP-level API key middleware
+# ---------------------------------------------------------------------------
+class ApiKeyMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        auth_header = request.headers.get("authorization", "")
+        if auth_header != f"Bearer {MCP_API_KEY}":
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return await call_next(request)
 
 
 # ---------------------------------------------------------------------------
@@ -420,4 +436,6 @@ def update_user_settings(user_id: str, settings: dict) -> dict:
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=8080)
+    app = mcp.http_app()
+    app.add_middleware(ApiKeyMiddleware)
+    uvicorn.run(app, host="0.0.0.0", port=8080)

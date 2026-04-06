@@ -1,15 +1,16 @@
-import { createServerClient } from "@/lib/supabase";
-import { TEMP_USER_ID } from "@/lib/constants";
+import { createAdminClient } from "@/lib/supabase";
+import { requireUser } from "@/lib/auth";
 import { ProjectsList } from "@/components/proyectos/ProjectsList";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProyectosPage() {
-  const db = createServerClient();
+  const user = await requireUser();
+  const db = createAdminClient();
   const { data: projects } = await db
     .from("projects")
     .select("id, name, status, hours_per_week_needed, priority")
-    .eq("user_id", TEMP_USER_ID)
+    .eq("user_id", user.id)
     .order("priority");
 
   return (

@@ -1,18 +1,14 @@
-import { createServerClient } from "@/lib/supabase";
+import { createAdminClient } from "@/lib/supabase";
+import { requireUser } from "@/lib/auth";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("user_id");
+export async function GET() {
+  const user = await requireUser();
 
-  if (!userId) {
-    return Response.json({ error: "user_id is required" }, { status: 400 });
-  }
-
-  const db = createServerClient();
+  const db = createAdminClient();
   const { data, error } = await db
     .from("projects")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", user.id)
     .order("priority");
 
   if (error) {
@@ -23,17 +19,18 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { user_id, name, hours_per_week_needed, priority } = await request.json();
+  const user = await requireUser();
+  const { name, hours_per_week_needed, priority } = await request.json();
 
-  if (!user_id || !name) {
-    return Response.json({ error: "user_id and name are required" }, { status: 400 });
+  if (!name) {
+    return Response.json({ error: "name is required" }, { status: 400 });
   }
 
-  const db = createServerClient();
+  const db = createAdminClient();
   const { data, error } = await db
     .from("projects")
     .insert({
-      user_id,
+      user_id: user.id,
       name,
       hours_per_week_needed: hours_per_week_needed ?? null,
       priority: priority ?? 3,
@@ -50,6 +47,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const user = await requireUser();
   const { id, status, hours_per_week_needed, priority } = await request.json();
 
   if (!id) {
@@ -61,11 +59,12 @@ export async function PATCH(request: Request) {
   if (hours_per_week_needed !== undefined) updates.hours_per_week_needed = hours_per_week_needed;
   if (priority !== undefined) updates.priority = priority;
 
-  const db = createServerClient();
+  const db = createAdminClient();
   const { data, error } = await db
     .from("projects")
     .update(updates)
     .eq("id", id)
+    .eq("user_id", user.id)
     .select()
     .single();
 

@@ -7,7 +7,8 @@ import { TimeBlock } from "@/components/ui/TimeBlock";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
-import { TEMP_USER_ID } from "@/lib/constants";
+import { ReflectionModal } from "@/components/hoy/ReflectionModal";
+import { useUserId } from "@/components/AuthProvider";
 import { calculateEnfoque, getCurrentEnergy } from "@/lib/enfoque";
 
 interface TaskData {
@@ -53,6 +54,8 @@ interface DayViewProps {
   projects: ProjectMap;
   planDate: string;
   peakWindow?: PeakWindow;
+  taskCount?: number;
+  mood?: string | null;
 }
 
 const currentEnergyLabels = {
@@ -67,12 +70,22 @@ const currentEnergyColors = {
   baja: "bg-[var(--energy-low)]/10 text-[var(--energy-low)] border-[var(--energy-low)]/15",
 };
 
-export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { start: 8, end: 12 } }: DayViewProps) {
+const moodOptions = [
+  { level: "low", icon: "〰", label: "Baja", color: "bg-[var(--energy-low)]/15 text-[var(--energy-low)] border-[var(--energy-low)]/30" },
+  { level: "medium", icon: "〜", label: "Media", color: "bg-amarillo/15 text-amarillo border-amarillo/30" },
+  { level: "high", icon: "⚡", label: "Alta", color: "bg-rojo/15 text-rojo border-rojo/30" },
+];
+
+export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { start: 8, end: 12 }, taskCount = 0, mood: initialMood = null }: DayViewProps) {
+  useUserId();
   const [plan, setPlan] = useState(initialPlan);
   const [taskStatuses, setTaskStatuses] = useState<Record<string, string>>({});
   const [showAll, setShowAll] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [currentMood, setCurrentMood] = useState<string | null>(initialMood);
+  const [savingMood, setSavingMood] = useState(false);
+  const [reflectionOpen, setReflectionOpen] = useState(false);
 
   useEffect(() => {
     if (plan?.time_blocks) {
@@ -91,7 +104,7 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
     if (!plan?.time_blocks) return;
 
     const eventSource = new EventSource(
-      `/api/stream/day?user_id=${TEMP_USER_ID}&plan_date=${planDate}`,
+      `/api/stream/day?plan_date=${planDate}`,
     );
 
     eventSource.addEventListener("task_update", (event) => {
@@ -140,7 +153,6 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
         body: JSON.stringify({
           task_id: taskId,
           status: "deferred",
-          user_id: TEMP_USER_ID,
         }),
       });
       if (!response.ok) throw new Error(`Error ${response.status}`);
@@ -165,13 +177,31 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
     }
   }, []);
 
+  async function handleMoodSelect(level: string) {
+    setSavingMood(true);
+    setCurrentMood(level);
+    try {
+      const response = await fetch("/api/energy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ energy_level: level }),
+      });
+      if (!response.ok) throw new Error(`Error ${response.status}`);
+    } catch {
+      setCurrentMood(null);
+      setToast({ message: "No se pudo guardar tu energía", type: "error" });
+    } finally {
+      setSavingMood(false);
+    }
+  }
+
   async function handleGeneratePlan() {
     setGenerating(true);
     try {
       const response = await fetch("/api/agents/plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: TEMP_USER_ID, plan_date: planDate }),
+        body: JSON.stringify({ plan_date: planDate }),
       });
       if (!response.ok) throw new Error(`Error ${response.status}`);
       window.location.reload();
@@ -183,6 +213,8 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
 
   // No plan yet
   if (!plan || !plan.time_blocks) {
+    const hasTasks = taskCount > 0;
+
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-12rem)] gap-(--space-8) animate-fade-slide-up">
         <Image
@@ -193,25 +225,66 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
           className="opacity-60"
           priority
         />
+
+        {/* Energy prompt (before plan) */}
+        {!currentMood && (
+          <div className="flex flex-col items-center gap-(--space-3)">
+            <p className="text-gris text-sm font-[family-name:var(--font-body)]">
+              ¿Cómo te sientes hoy?
+            </p>
+            <div className="flex gap-(--space-3)">
+              {moodOptions.map((opt) => (
+                <button
+                  key={opt.level}
+                  onClick={() => handleMoodSelect(opt.level)}
+                  disabled={savingMood}
+                  className={`flex flex-col items-center gap-1 px-(--space-4) py-(--space-3) rounded-(--radius-lg) border-2 transition-all active:scale-95 bg-bg-card text-gris border-blanco/[0.06] hover:border-blanco/15`}
+                >
+                  <span className="text-lg">{opt.icon}</span>
+                  <span className="text-xs font-[family-name:var(--font-body)]">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {currentMood && (
+          <Badge
+            label={`Energía ${moodOptions.find((m) => m.level === currentMood)?.label?.toLowerCase() ?? ""}`}
+            className={moodOptions.find((m) => m.level === currentMood)?.color ?? ""}
+          />
+        )}
+
         <div className="text-center">
           <p className="text-blanco font-[family-name:var(--font-heading)] text-lg italic">
             Tu día espera
           </p>
-          <p className="text-gris text-sm mt-1">No hay plan para hoy todavía.</p>
-        </div>
-        <Button onClick={handleGeneratePlan} disabled={generating}>
-          {generating ? (
-            <span className="flex items-center gap-(--space-2)">
-              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Generando plan...
-            </span>
+          {hasTasks ? (
+            <p className="text-gris text-sm mt-1">
+              {taskCount} {taskCount === 1 ? "tarea pendiente" : "tareas pendientes"} para planificar.
+            </p>
           ) : (
-            "Generar plan para hoy"
+            <p className="text-gris text-sm mt-1">
+              Captura tus primeras tareas con el botón <span className="text-azul">+</span> de abajo.
+            </p>
           )}
-        </Button>
+        </div>
+
+        {hasTasks && (
+          <Button onClick={handleGeneratePlan} disabled={generating}>
+            {generating ? (
+              <span className="flex items-center gap-(--space-2)">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Generando plan...
+              </span>
+            ) : (
+              "Generar plan para hoy"
+            )}
+          </Button>
+        )}
       </div>
     );
   }
@@ -225,21 +298,27 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
   }));
 
   // Calculate Enfoque score
-  const { score: enfoqueScore } = calculateEnfoque(enrichedBlocks, peakWindow);
+  const { score: enfoqueScore, alignment, energyMatch, priorityIntegrity } = calculateEnfoque(enrichedBlocks, peakWindow);
 
   // Current energy based on time of day
   const currentEnergy = getCurrentEnergy(peakWindow);
 
   // Separate task blocks from breaks
   const taskBlocks = enrichedBlocks.filter((b) => b.slot_type !== "break" && b.task);
+  // Filter by server-side status only (not optimistic local state) to avoid unmounting during animations
+  const activeBlocks = taskBlocks.filter((b) => {
+    const serverStatus = b.task?.status;
+    return serverStatus !== "deferred" && serverStatus !== "completed";
+  });
+  const completedCount = Object.values(taskStatuses).filter((s) => s === "completed").length;
 
   // TOP 3 by plan_rank (fallback to first 3)
-  const top3Ranked = taskBlocks
+  const top3Ranked = activeBlocks
     .filter((b) => b.plan_rank && b.plan_rank >= 1 && b.plan_rank <= 3)
     .sort((a, b) => (a.plan_rank ?? 0) - (b.plan_rank ?? 0));
-  const top3 = top3Ranked.length > 0 ? top3Ranked : taskBlocks.slice(0, 3);
+  const top3 = top3Ranked.length > 0 ? top3Ranked : activeBlocks.slice(0, 3);
   const top3Ids = new Set(top3.map((b) => b.task_id));
-  const overflow = taskBlocks.filter((b) => !top3Ids.has(b.task_id));
+  const overflow = activeBlocks.filter((b) => !top3Ids.has(b.task_id));
 
   return (
     <div className="flex flex-col items-center gap-(--space-6)">
@@ -247,8 +326,33 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
         Hoy
       </span>
 
+      {/* Energy prompt (with plan) */}
+      {!currentMood && (
+        <div className="w-full bg-bg-card/50 rounded-(--radius-lg) p-(--space-4) flex flex-col items-center gap-(--space-3) border border-blanco/[0.04]">
+          <p className="text-gris text-xs font-[family-name:var(--font-body)]">
+            ¿Cómo te sientes hoy?
+          </p>
+          <div className="flex gap-(--space-3)">
+            {moodOptions.map((opt) => (
+              <button
+                key={opt.level}
+                onClick={() => handleMoodSelect(opt.level)}
+                disabled={savingMood}
+                className={`flex items-center gap-1.5 px-(--space-3) py-(--space-2) rounded-full text-xs font-medium transition-all active:scale-95 bg-bg-card text-gris border border-blanco/[0.06]`}
+              >
+                <span>{opt.icon}</span>
+                <span className="font-[family-name:var(--font-body)]">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Enfoque ring */}
-      <ProgressArc score={enfoqueScore} />
+      <ProgressArc
+        score={enfoqueScore}
+        breakdown={{ alignment, energyMatch, priorityIntegrity }}
+      />
 
       {/* Current energy badge (time-based) */}
       <Badge
@@ -256,7 +360,41 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
         className={currentEnergyColors[currentEnergy]}
       />
 
+      {/* Empty plan — all tasks done or deferred */}
+      {activeBlocks.length === 0 && (
+        <div className="w-full flex flex-col items-center gap-(--space-4) py-(--space-4)">
+          {completedCount > 0 && (
+            <p className="text-gris text-sm font-[family-name:var(--font-body)] text-center">
+              {completedCount === taskBlocks.length
+                ? "Completaste todas las tareas del día"
+                : `${completedCount} completada${completedCount !== 1 ? "s" : ""}, el resto diferidas`}
+            </p>
+          )}
+          {taskCount > 0 && (
+            <Button onClick={handleGeneratePlan} disabled={generating}>
+              {generating ? (
+                <span className="flex items-center gap-(--space-2)">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Regenerando plan...
+                </span>
+              ) : (
+                "Regenerar plan"
+              )}
+            </Button>
+          )}
+          {taskCount === 0 && completedCount === 0 && (
+            <p className="text-gris text-sm font-[family-name:var(--font-body)] text-center">
+              Captura tareas con el botón <span className="text-azul">+</span> para regenerar tu plan.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* TOP 3 section */}
+      {activeBlocks.length > 0 && (
       <div className="w-full">
         <span className="text-xs text-gris tracking-[0.15em] uppercase mb-(--space-3) block font-[family-name:var(--font-body)] font-medium">
           Top {Math.min(3, top3.length)}
@@ -288,43 +426,62 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
         <p className="text-xs text-gris/25 text-center mt-(--space-3) font-[family-name:var(--font-body)]">
           toca una tarea para ver opciones
         </p>
-      </div>
 
-      {/* Overflow tasks */}
-      {overflow.length > 0 && (
+        {/* Overflow tasks */}
+        {overflow.length > 0 && (
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className="w-full bg-bg-card/50 rounded-(--radius-lg) py-(--space-3) text-center border border-blanco/[0.04] transition-all active:scale-[0.99] mt-(--space-3)"
+          >
+            <span className="text-sm text-azul font-medium">
+              {showAll ? "Ocultar" : `${overflow.length} tareas más`}
+            </span>
+          </button>
+        )}
+
+        {showAll && (
+          <div className="flex flex-col gap-(--space-3) stagger-children mt-(--space-3)">
+            {overflow.map((block, index) => (
+              <TimeBlock
+                key={`${block.task_id}-overflow-${index}`}
+                taskId={block.task_id}
+                title={block.task?.title ?? "Tarea"}
+                projectName={
+                  block.task?.project_id ? projects[block.task.project_id] : undefined
+                }
+                startTime={block.start_time}
+                endTime={block.end_time}
+                energyLevel={block.task?.energy_level ?? "medium"}
+                slotType={block.slot_type}
+                completed={taskStatuses[block.task_id] === "completed"}
+                estimatedMinutes={block.task?.estimated_minutes}
+                onComplete={handleComplete}
+                onDefer={handleDefer}
+                onCancel={handleCancel}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      )}
+
+      {/* End-of-day reflection */}
+      {completedCount > 0 && (
         <button
-          onClick={() => setShowAll(!showAll)}
-          className="w-full bg-bg-card/50 rounded-(--radius-lg) py-(--space-3) text-center border border-blanco/[0.04] transition-all active:scale-[0.99]"
+          onClick={() => setReflectionOpen(true)}
+          className="w-full bg-bg-card rounded-(--radius-lg) py-(--space-4) text-center border border-terracotta/15 transition-all active:scale-[0.99] mt-(--space-2)"
         >
-          <span className="text-sm text-azul font-medium">
-            {showAll ? "Ocultar" : `${overflow.length} tareas más`}
+          <span className="text-sm text-terracotta font-[family-name:var(--font-body)] font-medium">
+            Cerrar el día
           </span>
         </button>
       )}
 
-      {showAll && (
-        <div className="w-full flex flex-col gap-(--space-3) stagger-children">
-          {overflow.map((block, index) => (
-            <TimeBlock
-              key={`${block.task_id}-overflow-${index}`}
-              taskId={block.task_id}
-              title={block.task?.title ?? "Tarea"}
-              projectName={
-                block.task?.project_id ? projects[block.task.project_id] : undefined
-              }
-              startTime={block.start_time}
-              endTime={block.end_time}
-              energyLevel={block.task?.energy_level ?? "medium"}
-              slotType={block.slot_type}
-              completed={taskStatuses[block.task_id] === "completed"}
-              estimatedMinutes={block.task?.estimated_minutes}
-              onComplete={handleComplete}
-              onDefer={handleDefer}
-              onCancel={handleCancel}
-            />
-          ))}
-        </div>
-      )}
+      <ReflectionModal
+        open={reflectionOpen}
+        onClose={() => setReflectionOpen(false)}
+        planDate={planDate}
+      />
 
       {toast && (
         <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />

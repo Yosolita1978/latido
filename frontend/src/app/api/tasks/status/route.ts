@@ -1,7 +1,9 @@
 import { callTool } from "@/lib/mcp-client";
+import { requireUser } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const { task_id, status, actual_minutes, completed_at, user_id } = await request.json();
+  const user = await requireUser();
+  const { task_id, status, actual_minutes, completed_at } = await request.json();
 
   if (!task_id || !status) {
     return Response.json(
@@ -19,13 +21,13 @@ export async function POST(request: Request) {
   });
 
   // If deferring, also handle the defer-to-tomorrow logic
-  if (status === "deferred" && user_id) {
+  if (status === "deferred") {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowDate = tomorrow.toISOString().split("T")[0];
 
     await callTool("defer_to_tomorrow", {
-      user_id,
+      user_id: user.id,
       task_id,
       plan_date: tomorrowDate,
     });

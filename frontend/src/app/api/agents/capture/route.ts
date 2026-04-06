@@ -1,5 +1,6 @@
 import { chat, embed, parseJSON } from "@/lib/openai";
 import { callTool } from "@/lib/mcp-client";
+import { requireUser } from "@/lib/auth";
 
 interface CaptureResult {
   type: "task" | "activity" | "energy";
@@ -14,14 +15,17 @@ interface CaptureResult {
 }
 
 export async function POST(request: Request) {
-  const { user_id, raw_text, capture_mode } = await request.json();
+  const user = await requireUser();
+  const { raw_text, capture_mode } = await request.json();
 
-  if (!user_id || !raw_text) {
+  if (!raw_text) {
     return Response.json(
-      { error: "user_id and raw_text are required" },
+      { error: "raw_text is required" },
       { status: 400 },
     );
   }
+
+  const user_id = user.id;
 
   // Step 1: Generate embedding
   const queryEmbedding = await embed(raw_text);
@@ -102,8 +106,8 @@ General rules:
   if (result.type === "energy") {
     // Store energy level on today's plan
     const today = new Date().toISOString().split("T")[0];
-    const { createServerClient } = await import("@/lib/supabase");
-    const db = createServerClient();
+    const { createAdminClient } = await import("@/lib/supabase");
+    const db = createAdminClient();
     await db
       .from("daily_plans")
       .upsert(

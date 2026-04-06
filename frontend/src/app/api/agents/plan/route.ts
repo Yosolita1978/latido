@@ -1,5 +1,6 @@
 import { chat, embed, parseJSON } from "@/lib/openai";
 import { callTool } from "@/lib/mcp-client";
+import { requireUser } from "@/lib/auth";
 
 interface TimeBlock {
   task_id: string;
@@ -69,25 +70,31 @@ function timeToMinutes(time: string): number {
 }
 
 export async function POST(request: Request) {
-  const { user_id, plan_date } = await request.json();
+  const user = await requireUser();
+  const { plan_date } = await request.json();
 
-  if (!user_id || !plan_date) {
+  if (!plan_date) {
     return Response.json(
-      { error: "user_id and plan_date are required" },
+      { error: "plan_date is required" },
       { status: 400 },
     );
   }
 
+  const user_id = user.id;
+
   // Step 1-4: Fetch all context in parallel
-  const [settings, commitmentsData, tasks, projects] = await Promise.all([
+  const [settings, commitmentsData, rawTasks, rawProjects] = await Promise.all([
     callTool("get_user_settings", { user_id }) as Promise<UserSettings>,
     callTool("get_active_commitments", { user_id }) as Promise<{
       commitments: Commitment[];
       total_committed_hours_per_week: number;
     }>,
-    callTool("get_unscheduled_tasks", { user_id }) as Promise<Task[]>,
-    callTool("get_projects", { user_id }) as Promise<Project[]>,
+    callTool("get_unscheduled_tasks", { user_id }),
+    callTool("get_projects", { user_id }),
   ]);
+
+  const tasks: Task[] = Array.isArray(rawTasks) ? rawTasks : [];
+  const projects: Project[] = Array.isArray(rawProjects) ? rawProjects : [];
 
   // Step 5: Generate context embedding and fetch relevant patterns
   const dayOfWeek = getDayOfWeek(plan_date);
