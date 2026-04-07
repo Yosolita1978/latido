@@ -2,6 +2,14 @@ import { embed } from "@/lib/openai";
 import { callTool } from "@/lib/mcp-client";
 import { requireUser } from "@/lib/auth";
 
+interface SearchMatch {
+  id: string;
+  title: string;
+  status: string;
+  category: string;
+  combined_score: number;
+}
+
 export async function POST(request: Request) {
   const user = await requireUser();
   const { query } = await request.json();
@@ -10,16 +18,24 @@ export async function POST(request: Request) {
     return Response.json([]);
   }
 
-  const queryEmbedding = await embed(query);
+  try {
+    const queryEmbedding = await embed(query);
 
-  const results = (await callTool("search_tasks_hybrid", {
-    user_id: user.id,
-    query_text: query,
-    query_embedding: queryEmbedding,
-  })) as Array<{ id: string; title: string; status: string; category: string; combined_score: number }>;
+    const raw = await callTool("search_tasks_hybrid", {
+      user_id: user.id,
+      query_text: query,
+      query_embedding: queryEmbedding,
+    });
 
-  // Only return matches above threshold
-  const matches = (results ?? []).filter((r) => r.combined_score > 0.75);
+    const results: SearchMatch[] = Array.isArray(raw) ? raw : [];
 
-  return Response.json(matches);
+    // Only return matches above threshold
+    const matches = results.filter((r) => r.combined_score > 0.75);
+
+    return Response.json(matches);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Search error:", message);
+    return Response.json([]);
+  }
 }

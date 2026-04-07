@@ -31,23 +31,26 @@ export async function POST(request: Request) {
   const queryEmbedding = await embed(raw_text);
 
   // Step 2: Search for similar tasks + get projects (parallel)
-  const [searchResults, projects] = await Promise.all([
+  const [rawSearchResults, rawProjects] = await Promise.all([
     callTool("search_tasks_hybrid", {
       user_id,
       query_text: raw_text,
       query_embedding: queryEmbedding,
-    }) as Promise<Array<{ id: string; title: string; combined_score: number }>>,
-    callTool("get_projects", { user_id }) as Promise<
-      Array<{ id: string; name: string }>
-    >,
+    }),
+    callTool("get_projects", { user_id }),
   ]);
+
+  const searchResults: Array<{ id: string; title: string; combined_score: number }> =
+    Array.isArray(rawSearchResults) ? rawSearchResults : [];
+  const projects: Array<{ id: string; name: string }> =
+    Array.isArray(rawProjects) ? rawProjects : [];
 
   const projectsList = projects
     .map((p) => `- ${p.name} (id: ${p.id})`)
     .join("\n");
 
   let matchContext = "";
-  const topMatch = searchResults?.[0];
+  const topMatch = searchResults[0];
   if (topMatch && topMatch.combined_score > 0.75) {
     matchContext = `Existing similar tasks found:\n${searchResults
       .map((t) => `- "${t.title}" (id: ${t.id}, score: ${t.combined_score.toFixed(2)})`)
