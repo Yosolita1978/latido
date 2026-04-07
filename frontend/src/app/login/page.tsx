@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase-browser";
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -100,7 +100,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading || !email.trim()}
+              disabled={loading || email.trim().length === 0}
               className="w-full bg-azul text-bg-primary font-[family-name:var(--font-body)] font-semibold text-base py-[var(--space-4)] rounded-[var(--radius-lg)] active:scale-[0.98] transition-all disabled:opacity-40 shadow-[0_4px_16px_rgba(59,143,228,0.25)]"
             >
               {loading ? "Enviando..." : "Enviar enlace mágico"}
@@ -109,5 +109,13 @@ export default function LoginPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUserId } from "@/components/AuthProvider";
@@ -49,7 +49,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   notification_channel: "email",
 };
 
-export default function SettingsPage() {
+function SettingsContent() {
   useUserId();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -325,6 +325,14 @@ export default function SettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={null}>
+      <SettingsContent />
+    </Suspense>
   );
 }
 
