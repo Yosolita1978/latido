@@ -438,4 +438,5 @@ def update_user_settings(user_id: str, settings: dict) -> dict:
 if __name__ == "__main__":
     app = mcp.http_app()
     app.add_middleware(ApiKeyMiddleware)
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    port = int(os.environ.get("PORT", "8080"))
+    uvicorn.run(app, host="0.0.0.0", port=port)
