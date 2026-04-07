@@ -28,7 +28,7 @@ export async function PATCH(request: Request) {
 
   if (!existing) {
     // Create default settings row first
-    await db.from("user_settings").insert({
+    const { error: insertError } = await db.from("user_settings").insert({
       user_id: user.id,
       timezone: settings.timezone ?? "America/Mexico_City",
       work_hours_start: settings.work_hours_start ?? "09:00",
@@ -37,6 +37,13 @@ export async function PATCH(request: Request) {
       max_daily_tasks: settings.max_daily_tasks ?? null,
       notification_channel: settings.notification_channel ?? "email",
     });
+
+    if (insertError) {
+      return Response.json(
+        { error: `Insert failed: ${insertError.message}`, details: insertError },
+        { status: 500 },
+      );
+    }
 
     return Response.json({ success: true, created: true });
   }

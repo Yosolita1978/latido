@@ -133,12 +133,14 @@ export default function SettingsPage() {
         setToast("Configuración guardada");
         setTimeout(() => setToast(null), 2500);
       } else {
-        setToast("Error al guardar");
-        setTimeout(() => setToast(null), 2500);
+        const errorMsg = data.error ?? "Error al guardar";
+        setToast(errorMsg);
+        setTimeout(() => setToast(null), 5000);
       }
-    } catch {
-      setToast("Error al guardar");
-      setTimeout(() => setToast(null), 2500);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error al guardar";
+      setToast(message);
+      setTimeout(() => setToast(null), 5000);
     } finally {
       setSaving(false);
     }
@@ -181,14 +183,12 @@ export default function SettingsPage() {
         <h1 className="font-[family-name:var(--font-heading)] text-xl text-blanco italic">
           Ajustes
         </h1>
-        {!isOnboarding && !isNew && (
-          <Link
-            href="/proyectos"
-            className="text-xs text-azul font-[family-name:var(--font-body)] font-medium hover:text-azul-light transition-colors"
-          >
-            Proyectos
-          </Link>
-        )}
+        <Link
+          href="/proyectos"
+          className="text-xs text-azul font-[family-name:var(--font-body)] font-medium hover:text-azul-light transition-colors"
+        >
+          Proyectos
+        </Link>
       </div>
 
       {/* Timezone */}
@@ -273,7 +273,7 @@ export default function SettingsPage() {
       </SettingsSection>
 
       {/* Google Calendar */}
-      {!isOnboarding && !isNew && google && (
+      {google && (
         <SettingsSection label="Integraciones">
           <div className="bg-bg-card rounded-(--radius-md) p-(--space-4) border border-blanco/[0.06] flex items-center justify-between gap-(--space-3)">
             <div className="flex flex-col gap-1 min-w-0">
