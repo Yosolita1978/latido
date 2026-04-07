@@ -226,8 +226,8 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
     }
   }
 
-  // No plan yet
-  if (!plan || !plan.time_blocks) {
+  // No plan yet (or plan exists with zero blocks — happens after only logging mood)
+  if (!plan || !plan.time_blocks || plan.time_blocks.length === 0) {
     const hasTasks = taskCount > 0;
 
     return (
@@ -369,11 +369,18 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
         breakdown={{ alignment, energyMatch, priorityIntegrity }}
       />
 
-      {/* Current energy badge (time-based) */}
-      <Badge
-        label={`${currentEnergyLabels[currentEnergy]}`}
-        className={currentEnergyColors[currentEnergy]}
-      />
+      {/* Energy badge — user's selected mood takes precedence over time-based */}
+      {currentMood ? (
+        <Badge
+          label={`Energía ${moodOptions.find((m) => m.level === currentMood)?.label?.toLowerCase() ?? ""}`}
+          className={moodOptions.find((m) => m.level === currentMood)?.color ?? ""}
+        />
+      ) : (
+        <Badge
+          label={`${currentEnergyLabels[currentEnergy]}`}
+          className={currentEnergyColors[currentEnergy]}
+        />
+      )}
 
       {/* Calendar events */}
       {calendarEvents.length > 0 && (
