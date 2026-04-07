@@ -320,10 +320,11 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
 
   // Separate task blocks from breaks
   const taskBlocks = enrichedBlocks.filter((b) => b.slot_type !== "break" && b.task);
-  // Filter by server-side status only (not optimistic local state) to avoid unmounting during animations
+  // Filter using BOTH optimistic local state AND server status — local state wins
+  // for instant feedback before router.refresh() updates the server data
   const activeBlocks = taskBlocks.filter((b) => {
-    const serverStatus = b.task?.status;
-    return serverStatus !== "deferred" && serverStatus !== "completed";
+    const status = taskStatuses[b.task_id] ?? b.task?.status;
+    return status !== "deferred" && status !== "completed";
   });
   const completedCount = Object.values(taskStatuses).filter((s) => s === "completed").length;
 
