@@ -31,6 +31,13 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Authenticated user trying to access /login → send them to /hoy
+  if (user && pathname.startsWith("/login")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/hoy";
+    return NextResponse.redirect(url);
+  }
+
   if (
     !user &&
     !pathname.startsWith("/login") &&
