@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ProgressArc } from "@/components/ui/ProgressArc";
 import { TimeBlock } from "@/components/ui/TimeBlock";
@@ -87,6 +88,7 @@ const moodOptions = [
 
 export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { start: 8, end: 12 }, taskCount = 0, mood: initialMood = null, calendarEvents = [] }: DayViewProps) {
   useUserId();
+  const router = useRouter();
   const [plan, setPlan] = useState(initialPlan);
   const [taskStatuses, setTaskStatuses] = useState<Record<string, string>>({});
   const [showAll, setShowAll] = useState(false);
@@ -147,11 +149,12 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
         }),
       });
       if (!response.ok) throw new Error(`Error ${response.status}`);
+      router.refresh();
     } catch {
       setTaskStatuses((prev) => ({ ...prev, [taskId]: "scheduled" }));
       setToast({ message: "No se pudo completar la tarea", type: "error" });
     }
-  }, []);
+  }, [router]);
 
   const handleDefer = useCallback(async (taskId: string) => {
     setTaskStatuses((prev) => ({ ...prev, [taskId]: "deferred" }));
@@ -165,11 +168,13 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
         }),
       });
       if (!response.ok) throw new Error(`Error ${response.status}`);
+      setToast({ message: "Movida a mañana", type: "success" });
+      router.refresh();
     } catch {
       setTaskStatuses((prev) => ({ ...prev, [taskId]: "scheduled" }));
       setToast({ message: "No se pudo diferir la tarea", type: "error" });
     }
-  }, []);
+  }, [router]);
 
   const handleCancel = useCallback(async (taskId: string) => {
     setTaskStatuses((prev) => ({ ...prev, [taskId]: "inbox" }));
@@ -180,11 +185,12 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
         body: JSON.stringify({ task_id: taskId, status: "inbox" }),
       });
       if (!response.ok) throw new Error(`Error ${response.status}`);
+      router.refresh();
     } catch {
       setTaskStatuses((prev) => ({ ...prev, [taskId]: "scheduled" }));
       setToast({ message: "No se pudo cancelar la tarea", type: "error" });
     }
-  }, []);
+  }, [router]);
 
   async function handleMoodSelect(level: string) {
     setSavingMood(true);
