@@ -27,18 +27,51 @@ const statusColors: Record<string, string> = {
   wishlist: "bg-gris/20 text-gris",
 };
 
+const priorityLabels: Record<number, string> = {
+  1: "Alta",
+  2: "Alta",
+  3: "Media",
+  4: "Baja",
+  5: "Baja",
+};
+
+const priorityColors: Record<number, string> = {
+  1: "text-rojo",
+  2: "text-rojo",
+  3: "text-amarillo",
+  4: "text-gris",
+  5: "text-gris",
+};
+
+const PRIORITY_OPTIONS = [
+  { value: 1, label: "Alta", color: "bg-rojo/15 text-rojo border-rojo/30" },
+  { value: 3, label: "Media", color: "bg-amarillo/15 text-amarillo border-amarillo/30" },
+  { value: 5, label: "Baja", color: "bg-gris/15 text-gris border-gris/30" },
+];
+
 interface ProjectsListProps {
   projects: Project[];
+  weeklyHoursAvailable: number;
 }
 
-export function ProjectsList({ projects: initialProjects }: ProjectsListProps) {
+export function ProjectsList({ projects: initialProjects, weeklyHoursAvailable }: ProjectsListProps) {
   const [projects, setProjects] = useState(initialProjects);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newHours, setNewHours] = useState("");
+  const [newPriority, setNewPriority] = useState<number>(3);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  // Sum hours from all active/blocked projects
+  const committedHours = projects
+    .filter((p) => p.status === "active" || p.status === "blocked")
+    .reduce((sum, p) => sum + (p.hours_per_week_needed ?? 0), 0);
+
+  const remainingHours = weeklyHoursAvailable - committedHours;
+  const overcommitted = remainingHours < 0;
+  const usagePercent = Math.min(100, (committedHours / weeklyHoursAvailable) * 100);
 
   async function handleAdd() {
     if (!newName.trim()) return;
@@ -50,6 +83,7 @@ export function ProjectsList({ projects: initialProjects }: ProjectsListProps) {
         body: JSON.stringify({
           name: newName.trim(),
           hours_per_week_needed: newHours ? parseFloat(newHours) : null,
+          priority: newPriority,
         }),
       });
       if (!response.ok) throw new Error(`Error ${response.status}`);
@@ -57,6 +91,7 @@ export function ProjectsList({ projects: initialProjects }: ProjectsListProps) {
       setProjects((prev) => [...prev, project]);
       setNewName("");
       setNewHours("");
+      setNewPriority(3);
       setShowAdd(false);
       setToast({ message: `Proyecto "${project.name}" creado`, type: "success" });
     } catch {
@@ -87,33 +122,107 @@ export function ProjectsList({ projects: initialProjects }: ProjectsListProps) {
     }
   }
 
+  async function handlePriorityChange(id: string, newPriorityValue: number) {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/projects", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, priority: newPriorityValue }),
+      });
+      if (!response.ok) throw new Error(`Error ${response.status}`);
+      const updated = await response.json();
+      setProjects((prev) => prev.map((p) => (p.id === id ? updated : p)));
+      setToast({ message: "Prioridad actualizada", type: "success" });
+    } catch {
+      setToast({ message: "No se pudo actualizar la prioridad", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const activeProjects = projects.filter((p) => p.status === "active" || p.status === "blocked");
   const inactiveProjects = projects.filter((p) => p.status === "paused" || p.status === "wishlist");
 
   return (
-    <div className="flex flex-col gap-[var(--space-6)]">
+    <div className="flex flex-col gap-(--space-6)">
+      {/* Hours summary */}
+      <div className="bg-bg-card rounded-(--radius-lg) p-(--space-4) border border-blanco/[0.04]">
+        <div className="flex items-baseline justify-between mb-(--space-2)">
+          <span className="text-xs text-gris tracking-[0.15em] uppercase font-[family-name:var(--font-body)] font-medium">
+            Horas comprometidas
+          </span>
+          <span className="font-[family-name:var(--font-heading)] text-xl text-blanco italic">
+            <span className={overcommitted ? "text-rojo" : "text-blanco"}>{committedHours}</span>
+            <span className="text-gris"> / {weeklyHoursAvailable}h</span>
+          </span>
+        </div>
+        <div className="h-2 w-full rounded-full bg-blanco/[0.06] overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-700 ${
+              overcommitted ? "bg-rojo" : usagePercent > 80 ? "bg-amarillo" : "bg-verde"
+            }`}
+            style={{ width: `${usagePercent}%` }}
+          />
+        </div>
+        <p className="text-xs text-gris/60 mt-(--space-2) font-[family-name:var(--font-body)]">
+          {overcommitted
+            ? `Te pasaste por ${Math.abs(remainingHours)}h esta semana`
+            : remainingHours === 0
+              ? "Tu semana está al máximo"
+              : `Tienes ${remainingHours}h libres en la semana`}
+        </p>
+      </div>
+
       {/* Add project button / form */}
       {showAdd ? (
-        <div className="bg-bg-card rounded-[var(--radius-lg)] p-[var(--space-4)] flex flex-col gap-[var(--space-3)]">
+        <div className="bg-bg-card rounded-(--radius-lg) p-(--space-4) flex flex-col gap-(--space-3)">
           <input
             type="text"
             placeholder="Nombre del proyecto"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            className="w-full p-[var(--space-3)] bg-bg-card-elevated text-blanco rounded-[var(--radius-md)] border border-blanco/10 focus:border-azul focus:outline-none text-sm font-[family-name:var(--font-body)]"
+            className="w-full p-(--space-3) bg-bg-card-elevated text-blanco rounded-(--radius-md) border border-blanco/10 focus:border-azul focus:outline-none text-sm font-[family-name:var(--font-body)]"
           />
           <input
             type="number"
             placeholder="Horas por semana (opcional)"
             value={newHours}
             onChange={(e) => setNewHours(e.target.value)}
-            className="w-full p-[var(--space-3)] bg-bg-card-elevated text-blanco rounded-[var(--radius-md)] border border-blanco/10 focus:border-azul focus:outline-none text-sm font-[family-name:var(--font-body)]"
+            className="w-full p-(--space-3) bg-bg-card-elevated text-blanco rounded-(--radius-md) border border-blanco/10 focus:border-azul focus:outline-none text-sm font-[family-name:var(--font-body)]"
           />
-          <div className="flex gap-[var(--space-2)]">
+
+          {/* Priority selector */}
+          <div className="flex flex-col gap-(--space-2)">
+            <span className="text-xs text-gris/70 font-[family-name:var(--font-body)]">
+              Prioridad
+            </span>
+            <div className="flex gap-(--space-2)">
+              {PRIORITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setNewPriority(opt.value)}
+                  disabled={loading}
+                  className={`
+                    flex-1 px-(--space-3) py-1.5 rounded-full text-xs font-medium
+                    font-[family-name:var(--font-body)] transition-all
+                    ${newPriority === opt.value
+                      ? opt.color + " border-2"
+                      : "bg-bg-card-elevated text-gris border border-blanco/[0.06]"
+                    }
+                  `}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-(--space-2) mt-(--space-2)">
             <Button onClick={handleAdd} disabled={loading || !newName.trim()} className="flex-1">
               Crear
             </Button>
-            <Button variant="ghost" onClick={() => { setShowAdd(false); setNewName(""); setNewHours(""); }} className="flex-1">
+            <Button variant="ghost" onClick={() => { setShowAdd(false); setNewName(""); setNewHours(""); setNewPriority(3); }} className="flex-1">
               Cancelar
             </Button>
           </div>
@@ -121,7 +230,7 @@ export function ProjectsList({ projects: initialProjects }: ProjectsListProps) {
       ) : (
         <button
           onClick={() => setShowAdd(true)}
-          className="w-full py-[var(--space-4)] rounded-[var(--radius-lg)] border-2 border-dashed border-blanco/10 text-gris text-sm hover:border-azul hover:text-azul transition-colors"
+          className="w-full py-(--space-4) rounded-(--radius-lg) border-2 border-dashed border-blanco/10 text-gris text-sm hover:border-azul hover:text-azul transition-colors"
         >
           + Nuevo proyecto
         </button>
@@ -129,9 +238,9 @@ export function ProjectsList({ projects: initialProjects }: ProjectsListProps) {
 
       {/* Active projects */}
       {activeProjects.length > 0 && (
-        <div className="flex flex-col gap-[var(--space-2)]">
+        <div className="flex flex-col gap-(--space-2)">
           <span className="text-xs text-gris tracking-widest uppercase">Activos</span>
-          <div className="flex flex-col gap-[var(--space-3)]">
+          <div className="flex flex-col gap-(--space-3)">
             {activeProjects.map((project) => (
               <ProjectCard
                 key={project.id}
@@ -139,6 +248,7 @@ export function ProjectsList({ projects: initialProjects }: ProjectsListProps) {
                 expanded={expandedId === project.id}
                 onToggleExpand={() => setExpandedId(expandedId === project.id ? null : project.id)}
                 onStatusChange={handleStatusChange}
+                onPriorityChange={handlePriorityChange}
                 loading={loading}
               />
             ))}
@@ -148,9 +258,9 @@ export function ProjectsList({ projects: initialProjects }: ProjectsListProps) {
 
       {/* Inactive projects */}
       {inactiveProjects.length > 0 && (
-        <div className="flex flex-col gap-[var(--space-2)]">
+        <div className="flex flex-col gap-(--space-2)">
           <span className="text-xs text-gris tracking-widest uppercase">Pausados / Wishlist</span>
-          <div className="flex flex-col gap-[var(--space-3)]">
+          <div className="flex flex-col gap-(--space-3)">
             {inactiveProjects.map((project) => (
               <ProjectCard
                 key={project.id}
@@ -158,6 +268,7 @@ export function ProjectsList({ projects: initialProjects }: ProjectsListProps) {
                 expanded={expandedId === project.id}
                 onToggleExpand={() => setExpandedId(expandedId === project.id ? null : project.id)}
                 onStatusChange={handleStatusChange}
+                onPriorityChange={handlePriorityChange}
                 loading={loading}
               />
             ))}
@@ -177,35 +288,41 @@ function ProjectCard({
   expanded,
   onToggleExpand,
   onStatusChange,
+  onPriorityChange,
   loading,
 }: {
   project: Project;
   expanded: boolean;
   onToggleExpand: () => void;
   onStatusChange: (id: string, status: string) => void;
+  onPriorityChange: (id: string, priority: number) => void;
   loading: boolean;
 }) {
   const actions = getActions(project.status);
+  const priorityLabel = priorityLabels[project.priority] ?? "Media";
+  const priorityColor = priorityColors[project.priority] ?? "text-amarillo";
 
   return (
-    <div className="bg-bg-card rounded-[var(--radius-lg)] overflow-hidden">
+    <div className="bg-bg-card rounded-(--radius-lg) overflow-hidden">
       <button
         onClick={onToggleExpand}
-        className="w-full p-[var(--space-4)] flex items-center gap-[var(--space-3)] text-left"
+        className="w-full p-(--space-4) flex items-center gap-(--space-3) text-left"
       >
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-[var(--space-2)]">
+          <div className="flex items-center gap-(--space-2)">
             <span className="text-base text-blanco font-medium truncate">{project.name}</span>
             <Badge
               label={statusLabels[project.status] ?? project.status}
               className={statusColors[project.status] ?? "bg-gris/20 text-gris"}
             />
           </div>
-          <div className="flex items-center gap-[var(--space-3)] mt-1">
+          <div className="flex items-center gap-(--space-3) mt-1">
             {project.hours_per_week_needed && (
               <span className="text-xs text-gris">{project.hours_per_week_needed}h/semana</span>
             )}
-            <span className="text-xs text-gris">Prioridad {project.priority}</span>
+            <span className={`text-xs ${priorityColor}`}>
+              Prioridad {priorityLabel}
+            </span>
           </div>
         </div>
         <svg
@@ -217,21 +334,50 @@ function ProjectCard({
       </button>
 
       {expanded && (
-        <div className="px-[var(--space-4)] pb-[var(--space-4)] flex gap-[var(--space-2)]">
-          {actions.map((action) => (
-            <button
-              key={action.status}
-              onClick={() => onStatusChange(project.id, action.status)}
-              disabled={loading}
-              className={`
-                flex-1 py-[var(--space-2)] rounded-[var(--radius-md)] text-xs font-medium
-                transition-colors disabled:opacity-50
-                ${action.color}
-              `}
-            >
-              {action.label}
-            </button>
-          ))}
+        <div className="px-(--space-4) pb-(--space-4) flex flex-col gap-(--space-3)">
+          {/* Priority selector */}
+          <div className="flex flex-col gap-(--space-2)">
+            <span className="text-xs text-gris/70 font-[family-name:var(--font-body)]">
+              Cambiar prioridad
+            </span>
+            <div className="flex gap-(--space-2)">
+              {PRIORITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => onPriorityChange(project.id, opt.value)}
+                  disabled={loading}
+                  className={`
+                    flex-1 px-(--space-3) py-1.5 rounded-full text-xs font-medium
+                    font-[family-name:var(--font-body)] transition-all
+                    ${project.priority === opt.value
+                      ? opt.color + " border-2"
+                      : "bg-bg-card-elevated text-gris border border-blanco/[0.06]"
+                    }
+                  `}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Status actions */}
+          <div className="flex gap-(--space-2)">
+            {actions.map((action) => (
+              <button
+                key={action.status}
+                onClick={() => onStatusChange(project.id, action.status)}
+                disabled={loading}
+                className={`
+                  flex-1 py-(--space-2) rounded-(--radius-md) text-xs font-medium
+                  transition-colors disabled:opacity-50
+                  ${action.color}
+                `}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
