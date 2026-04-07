@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface TimeBlockProps {
   taskId: string;
@@ -42,6 +42,39 @@ const slotLabels: Record<string, string> = {
 
 const timePills = [5, 15, 30, 45, 60];
 
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function getTimeStatus(
+  startTime: string,
+  endTime: string,
+): { label: string; color: string; isNow: boolean } | null {
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const startMin = timeToMinutes(startTime);
+  const endMin = timeToMinutes(endTime);
+
+  // Currently within the block
+  if (currentMinutes >= startMin && currentMinutes < endMin) {
+    return { label: "Ahora", color: "text-verde", isNow: true };
+  }
+
+  // Past — task is overdue
+  if (currentMinutes >= endMin) {
+    return { label: "Atrasada", color: "text-amarillo", isNow: false };
+  }
+
+  // Future — show how long until it starts
+  const minsUntil = startMin - currentMinutes;
+  if (minsUntil < 60) {
+    return { label: `En ${minsUntil} min`, color: "text-gris/60", isNow: false };
+  }
+  const hoursUntil = Math.floor(minsUntil / 60);
+  return { label: `En ${hoursUntil}h`, color: "text-gris/60", isNow: false };
+}
+
 export function TimeBlock({
   taskId,
   title,
@@ -63,6 +96,18 @@ export function TimeBlock({
   const [animating, setAnimating] = useState<"complete" | "defer" | null>(null);
   const [hidden, setHidden] = useState(false);
   const [deferMsg, setDeferMsg] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const timeStatus = slotType !== "break" ? getTimeStatus(startTime, endTime) : null;
+  const isNow = timeStatus?.isNow ?? false;
+
+  // Auto-scroll the current task into view when it's the "now" task
+  useEffect(() => {
+    if (isNow && cardRef.current && !completed) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    // Only run on mount — don't re-scroll if status changes mid-session
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (slotType === "break") {
     return (
@@ -109,9 +154,13 @@ export function TimeBlock({
 
   return (
     <div
+      ref={cardRef}
       className={`
         rounded-(--radius-lg) overflow-hidden transition-all duration-300 card-glow
-        border border-blanco/[0.04]
+        ${isNow && !completed
+          ? "border-2 border-verde/40 shadow-[0_0_24px_rgba(52,211,153,0.18)]"
+          : "border border-blanco/[0.04]"
+        }
         ${featured ? "bg-bg-card-elevated" : "bg-bg-card"}
         ${completed ? "opacity-40 scale-[0.98]" : ""}
         ${animating === "complete" ? "opacity-30 scale-95" : ""}
@@ -132,8 +181,13 @@ export function TimeBlock({
           <p className={`text-[0.938rem] text-blanco font-medium leading-snug ${completed ? "line-through text-gris" : ""}`}>
             {title}
           </p>
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span className="text-xs text-gris">{startTime}</span>
+            {timeStatus && !completed && (
+              <span className={`text-xs font-medium ${timeStatus.color}`}>
+                · {timeStatus.label}
+              </span>
+            )}
             {projectName && (
               <>
                 <span className="text-gris/30">·</span>
