@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Toast } from "@/components/ui/Toast";
 
 interface Project {
@@ -51,6 +52,7 @@ const priorityOptions = [
 ];
 
 export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
+  const router = useRouter();
   const [rawText, setRawText] = useState("");
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [selectedEnergy, setSelectedEnergy] = useState<string | null>(null);
@@ -129,6 +131,7 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
       });
       onClose();
       setToast({ message: `${matchTitle}`, type: "success" });
+      router.refresh();
     } catch {
       setToast({ message: "No se pudo vincular la tarea", type: "error" });
     } finally {
@@ -164,6 +167,7 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
       const data = await response.json();
       onClose();
       setToast({ message: data.title, type: "success" });
+      router.refresh();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error desconocido";
       setToast({ message: `No se pudo capturar: ${message}`, type: "error" });
