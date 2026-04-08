@@ -10,7 +10,7 @@ AI-powered daily planner for solopreneurs. Three AI agents (Capture, Day Archite
 - **Database:** Supabase (PostgreSQL + pgvector + RLS on every table)
 - **Auth:** Supabase Auth (magic link, email-based) via `@supabase/ssr`
 - **AI:** OpenAI (GPT for agents, text-embedding for embeddings)
-- **MCP Server:** FastMCP (Python) with 13 tools, runs on port 8080, protected by API key middleware
+- **MCP Server:** FastMCP (Python) with 14 tools, runs on port 8080, protected by API key middleware
 - **Hosting:** Vercel (frontend) + Render (MCP server) — not yet deployed
 
 ## Security
@@ -42,7 +42,7 @@ frontend/           Next.js app
   src/lib/          Shared utilities (mcp-client, supabase, auth, openai, enfoque)
   src/proxy.ts      Auth proxy (Next.js 16 — replaces middleware.ts)
   src/styles/       Talavera design tokens
-mcp-server/         Python FastMCP server (main.py, 13 tools)
+mcp-server/         Python FastMCP server (main.py, 14 tools)
 supabase/           Database migrations (001-004)
 ```
 
@@ -79,9 +79,9 @@ Implementation: `frontend/src/lib/enfoque.ts`
 - `user_settings` — timezone, work hours, preferences
 - `commitments` — recurring obligations
 
-## MCP Tools (13)
+## MCP Tools (14)
 
-`get_unscheduled_tasks`, `get_active_commitments`, `get_user_patterns`, `get_user_settings`, `write_daily_plan`, `update_task_status`, `capture_task`, `search_tasks_hybrid`, `write_pattern`, `get_todays_plan`, `get_projects`, `defer_to_tomorrow`, `update_user_settings`
+`get_unscheduled_tasks`, `get_active_commitments`, `get_user_patterns`, `get_user_settings`, `write_daily_plan`, `update_task_status`, `capture_task`, `search_tasks_hybrid`, `write_pattern`, `get_todays_plan`, `get_projects`, `defer_to_tomorrow`, `update_user_settings`, `get_chronic_deferrals`
 
 ## Design System (Talavera)
 

@@ -9,6 +9,7 @@ from fastmcp import FastMCP
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.routing import Route
 from supabase import Client, create_client
 
 load_dotenv()
@@ -26,10 +27,22 @@ mcp = FastMCP("latido-tools")
 # ---------------------------------------------------------------------------
 class ApiKeyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        # Public endpoints — no auth required
+        if request.url.path == "/health":
+            return await call_next(request)
+
         auth_header = request.headers.get("authorization", "")
         if auth_header != f"Bearer {MCP_API_KEY}":
             return JSONResponse({"error": "Unauthorized"}, status_code=401)
         return await call_next(request)
+
+
+# ---------------------------------------------------------------------------
+# Public health endpoint (no auth)
+# ---------------------------------------------------------------------------
+async def health_endpoint(request: Request) -> JSONResponse:
+    """Public liveness check for n8n Workflow 5. No API key required."""
+    return JSONResponse({"status": "ok", "tools_count": 14})
 
 
 # ---------------------------------------------------------------------------
@@ -436,10 +449,31 @@ def update_user_settings(user_id: str, settings: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Tool 14: get_chronic_deferrals
+# ---------------------------------------------------------------------------
+@mcp.tool()
+def get_chronic_deferrals(user_id: str) -> list[dict]:
+    """Get tasks the user has deferred 3 or more times, ordered by
+    deferred_count DESC, limit 5. Used by n8n Workflow 6 (noon escalation)."""
+    result = (
+        db.table("tasks")
+        .select("id, title, deferred_count, category, energy_level")
+        .eq("user_id", user_id)
+        .in_("status", ["inbox", "deferred"])
+        .gte("deferred_count", 3)
+        .order("deferred_count", desc=True)
+        .limit(5)
+        .execute()
+    )
+    return result.data
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     app = mcp.http_app()
+    app.router.routes.append(Route("/health", health_endpoint, methods=["GET"]))
     app.add_middleware(ApiKeyMiddleware)
     port = int(os.environ.get("PORT", "8080"))
     uvicorn.run(app, host="0.0.0.0", port=port)

@@ -106,7 +106,7 @@ Updates live as you complete tasks. Tap the ring to see the breakdown by compone
 | **Auth** | Supabase Auth (magic link via `@supabase/ssr`) |
 | **Database** | Supabase Postgres + pgvector (vector embeddings for patterns and tasks) |
 | **AI** | OpenAI (GPT-4 for agents, `text-embedding-3-small` for embeddings) |
-| **MCP server** | FastMCP (Python), 13 tools, API key middleware |
+| **MCP server** | FastMCP (Python), 14 tools, API key middleware |
 | **Calendar** | Google Calendar API (`googleapis`, OAuth 2.0) |
 | **Email** | Resend (custom SMTP for Supabase Auth) |
 | **Hosting** | Vercel (frontend) + Render (MCP server) |
@@ -127,7 +127,7 @@ Updates live as you complete tasks. Tap the ring to see the breakdown by compone
        ┌──────────────┐  ┌─────────────┐  ┌────────────────┐
        │  Supabase    │  │  OpenAI API │  │  MCP Server    │
        │  - Auth      │  │  - Chat     │  │  (Render)      │
-       │  - Postgres  │  │  - Embeds   │  │  - 13 tools    │
+       │  - Postgres  │  │  - Embeds   │  │  - 14 tools    │
        │  - pgvector  │  └─────────────┘  │  - API key auth│
        │  - Realtime  │                   └────────┬───────┘
        └──────────────┘                            │
@@ -200,7 +200,7 @@ latido/
 │   └── package.json
 │
 ├── mcp-server/                Python FastMCP server
-│   ├── main.py                13 tools + API key middleware
+│   ├── main.py                14 tools + API key middleware
 │   ├── requirements.txt
 │   └── seed_with_embeddings.py
 │
@@ -334,9 +334,9 @@ All tables have RLS enabled with `auth.uid() = user_id`.
 
 ---
 
-## MCP tools (13)
+## MCP tools (14)
 
-The MCP server exposes 13 tools used by the frontend agents:
+The MCP server exposes 14 tools used by the frontend agents and n8n workflows:
 
 - `get_unscheduled_tasks` — inbox + deferred
 - `get_active_commitments` — recurring obligations + total hours/week
@@ -351,6 +351,7 @@ The MCP server exposes 13 tools used by the frontend agents:
 - `search_tasks_hybrid` — full-text (Spanish) + semantic similarity search
 - `write_pattern` — upsert behavioral pattern with embedding
 - `defer_to_tomorrow` — remove from today's plan, append to tomorrow's
+- `get_chronic_deferrals` — tasks deferred 3+ times (used by n8n W6)
 
 ---
 

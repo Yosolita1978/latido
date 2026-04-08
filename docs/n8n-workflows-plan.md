@@ -1,7 +1,7 @@
 # n8n Workflows — Implementation Plan
 
-**Status:** In progress — Phase 1 partially done, Phases 2–5 pending
-**Last updated:** 2026-04-07
+**Status:** In progress — Phase 3 (code) done, Phase 1 (n8n reconfig) next
+**Last updated:** 2026-04-08
 
 ---
 
@@ -22,20 +22,24 @@ Automate Latido's daily loop with n8n so the user doesn't have to manually trigg
 | `POST /api/cron/plan` endpoint (with skip guards) | ✅ Built |
 | `POST /api/cron/reflect` endpoint (with NoPlanError handling) | ✅ Built |
 | Workflow 1 in n8n (basic setup, currently 8:30 AM PST for today) | 🟡 Needs to change to 8:00 PM PST for **tomorrow** |
-| Telegram bot (`cristina_edtech_bot`) | ✅ Already exists from SonetoBot |
+| `GET /api/health` (Next.js) | ✅ Built (Step A) |
+| `GET /health` (MCP server) | ✅ Built (Step B) |
+| `POST /api/cron/morning-status` (Next.js) | ✅ Built (Step C) |
+| `POST /api/cron/chronic-deferrals` (Next.js) + MCP tool `get_chronic_deferrals` | ✅ Built (Step D) |
+| Telegram bot (**Latido Bot — new, dedicated**) | ❌ Needs to be created via @BotFather |
 
 ---
 
 ## What's missing ❌
 
-### Code (new endpoints)
+### Code (new endpoints) — ✅ ALL DONE in 2026-04-08 session
 
-| Endpoint | Purpose | Where |
-|----------|---------|-------|
-| `GET /api/health` | Check Supabase connection — returns `{ status, supabase, timestamp }` | Next.js |
-| `GET /health` | Return `{ status, tools_count: 13 }` | MCP server (Python) |
-| `POST /api/cron/morning-status` | Return today's plan info (TOP 3 titles, task count) for morning nudge | Next.js |
-| `POST /api/cron/chronic-deferrals` | Return tasks with `deferred_count >= 3` for noon escalation | Next.js |
+| Endpoint | Purpose | Where | Status |
+|----------|---------|-------|--------|
+| `GET /api/health` | Check Supabase connection — returns `{ status, supabase, timestamp }` | Next.js | ✅ |
+| `GET /health` | Return `{ status, tools_count: 14 }` | MCP server (Python) | ✅ |
+| `POST /api/cron/morning-status` | Return today's plan info (TOP 3 titles, task count, current_energy) for morning nudge | Next.js | ✅ |
+| `POST /api/cron/chronic-deferrals` | Return tasks with `deferred_count >= 3` for noon escalation | Next.js | ✅ |
 
 ### n8n workflows
 
@@ -53,7 +57,7 @@ Automate Latido's daily loop with n8n so the user doesn't have to manually trigg
 | Credential | Notes |
 |------------|-------|
 | `Latido Cron Auth` (Header Auth) | ✅ Already exists. Header `Authorization`, value `Bearer <CRON_API_KEY>` |
-| Telegram Bot (Bot Token) | Get from @BotFather, paste into n8n Telegram credential |
+| Telegram Bot (Bot Token) | **Create a NEW dedicated "Latido Bot" via @BotFather** — do NOT reuse `cristina_edtech_bot` from SonetoBot. Get token from BotFather, chat ID from @userinfobot, paste both into a fresh n8n Telegram credential. |
 
 ---
 
@@ -308,12 +312,11 @@ You can store these as n8n environment variables (Settings → Variables) so wor
 
 ## Next session — pick up here
 
-When you come back tomorrow, start with **Phase 3 (build the new endpoints)** so all the code is ready before touching n8n. Then:
+Phase 3 (code) is ✅ done as of 2026-04-08. All four endpoints exist locally and the new MCP tool `get_chronic_deferrals` is registered. Next session, work from inside n8n:
 
-1. Phase 3 (code)
-2. Phase 1 (reconfigure W1, build W2)
-3. Phase 2 (Telegram on W1 and W2)
-4. Phase 4 (build W4, W5, W6)
+1. **Phase 1** — reconfigure W1 (8 PM, tomorrow's date), build W2 (9:30 PM, today's date)
+2. **Phase 2** — create the new "Latido Bot" via @BotFather, add Telegram credential in n8n, wire Telegram nodes to W1 and W2
+3. **Phase 4** — build W5 (Health Monitor) first, then W4 (Morning Nudge), then W6 (Deferred Escalation)
 
-The handoff to Claude tomorrow:
-> "Continue the n8n workflows plan from `docs/n8n-workflows-plan.md`. Start with Phase 3."
+The handoff to Claude next time:
+> "Continue the n8n workflows plan from `docs/n8n-workflows-plan.md`. Phase 3 is done — start with Phase 1 (reconfigure W1 + build W2 in n8n)."
