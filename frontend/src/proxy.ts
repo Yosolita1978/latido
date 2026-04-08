@@ -31,6 +31,11 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // API routes handle their own auth (return 401 if needed) — never redirect them
+  if (pathname.startsWith("/api/")) {
+    return supabaseResponse;
+  }
+
   // Authenticated user trying to access /login → send them to /hoy
   if (user && pathname.startsWith("/login")) {
     const url = request.nextUrl.clone();
