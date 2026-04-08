@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       return Response.json({
         success: true,
         skipped: true,
-        reason: "user has not completed onboarding (no settings)",
+        reason: "el usuario aún no ha completado la configuración inicial",
       });
     }
 
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       return Response.json({
         success: true,
         skipped: true,
-        reason: "plan already exists",
+        reason: "ya existe un plan para esta fecha",
       });
     }
 
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       return Response.json({
         success: true,
         skipped: true,
-        reason: "no tasks to plan",
+        reason: "no hay tareas para planificar",
       });
     }
 

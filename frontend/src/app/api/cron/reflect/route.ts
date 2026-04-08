@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         {
           success: true,
           skipped: true,
-          reason: "no plan for this date",
+          reason: "no hay plan para esta fecha",
         },
         { status: 200 },
       );

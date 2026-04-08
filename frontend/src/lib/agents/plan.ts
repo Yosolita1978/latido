@@ -170,6 +170,8 @@ export async function generatePlan(
   // Step 8: Call OpenAI
   const systemPrompt = `You are the Day Architect for Latido, a daily planner for solopreneurs.
 
+IMPORTANT: All user-facing text you produce — especially the "reasoning" field — MUST be written in Spanish (español). Latido is a Spanish-first product. Do NOT respond in English.
+
 Today is: ${dayOfWeek}, ${plan_date}
 User's timezone: ${settings.timezone}
 Work hours: ${settings.work_hours_start} to ${settings.work_hours_end}
@@ -212,7 +214,7 @@ Return ONLY valid JSON:
     }
   ],
   "total_planned_minutes": number,
-  "reasoning": "Brief explanation of your planning logic"
+  "reasoning": "Explicación breve de tu lógica de planificación, en español (1-3 frases)"
 }
 
 Rules:
