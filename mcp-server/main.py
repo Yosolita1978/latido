@@ -40,7 +40,7 @@ def get_unscheduled_tasks(user_id: str) -> list[dict]:
     """Get all tasks with status 'inbox' or 'deferred', ordered by due date and deferred count."""
     result = (
         db.table("tasks")
-        .select("id, title, category, energy_level, estimated_minutes, project_id, due_date, deferred_count")
+        .select("id, title, category, energy_level, estimated_minutes, project_id, due_date, deferred_count, scheduled_at, created_at")
         .eq("user_id", user_id)
         .in_("status", ["inbox", "deferred"])
         .order("due_date", nullsfirst=False)
@@ -203,8 +203,9 @@ def capture_task(
     estimated_minutes: int,
     project_id: str | None = None,
     embedding: list[float] | None = None,
+    scheduled_at: str | None = None,
 ) -> dict:
-    """Create a new task in the inbox."""
+    """Create a new task in the inbox. scheduled_at is an optional ISO 8601 timestamp."""
     task_data: dict = {
         "user_id": user_id,
         "title": title,
@@ -213,6 +214,8 @@ def capture_task(
         "estimated_minutes": estimated_minutes,
         "status": "inbox",
     }
+    if scheduled_at:
+        task_data["scheduled_at"] = scheduled_at
     if project_id:
         task_data["project_id"] = project_id
     if embedding:

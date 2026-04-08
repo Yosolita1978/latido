@@ -51,6 +51,25 @@ const priorityOptions = [
   { level: "high", label: "Urgente", activeClass: "bg-rojo/15 text-rojo border-rojo/30" },
 ];
 
+// Returns ISO 8601 string for "today at HH:MM" in user's local timezone
+function todayAtTime(hours: number, minutes: number = 0): string {
+  const d = new Date();
+  d.setHours(hours, minutes, 0, 0);
+  return d.toISOString();
+}
+
+function nowPlusMinutes(min: number): string {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() + min);
+  d.setSeconds(0, 0);
+  return d.toISOString();
+}
+
+function formatTimeLabel(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+}
+
 export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
   const router = useRouter();
   const [rawText, setRawText] = useState("");
@@ -58,6 +77,8 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
   const [selectedEnergy, setSelectedEnergy] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<number | null>(null);
   const [selectedPriority, setSelectedPriority] = useState<string | null>(null);
+  const [scheduledAt, setScheduledAt] = useState<string | null>(null);
+  const [customTime, setCustomTime] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [matches, setMatches] = useState<SearchMatch[]>([]);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -81,6 +102,8 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
       setSelectedEnergy(null);
       setSelectedTime(null);
       setSelectedPriority(null);
+      setScheduledAt(null);
+      setCustomTime("");
       setMatches([]);
     }
   }, [open]);
@@ -159,6 +182,7 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
         body: JSON.stringify({
           raw_text: text,
           capture_mode: "tarea",
+          ...(scheduledAt && { scheduled_at: scheduledAt }),
         }),
       });
 
@@ -316,6 +340,60 @@ export function CaptureSheet({ open, onClose, projects }: CaptureSheetProps) {
                 </button>
               ))}
             </OptionRow>
+
+            {/* Hora programada */}
+            <OptionRow label="¿Cuándo?">
+              {[
+                { label: "Ahora", iso: nowPlusMinutes(0) },
+                { label: "En 1h", iso: nowPlusMinutes(60) },
+                { label: "Tarde", iso: todayAtTime(15, 0) },
+                { label: "Noche", iso: todayAtTime(19, 0) },
+              ].map((opt) => {
+                const active = scheduledAt === opt.iso;
+                return (
+                  <button
+                    key={opt.label}
+                    onClick={() => {
+                      setScheduledAt(active ? null : opt.iso);
+                      setCustomTime("");
+                    }}
+                    disabled={loading}
+                    className={`
+                      px-(--space-3) py-1.5 rounded-full text-xs font-medium
+                      font-[family-name:var(--font-body)] transition-all
+                      ${active
+                        ? "bg-verde/15 text-verde border-2 border-verde/30"
+                        : "bg-bg-card text-gris border border-blanco/[0.06]"
+                      }
+                    `}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+              <input
+                type="time"
+                value={customTime}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setCustomTime(v);
+                  if (v) {
+                    const [h, m] = v.split(":").map(Number);
+                    setScheduledAt(todayAtTime(h, m));
+                  } else {
+                    setScheduledAt(null);
+                  }
+                }}
+                disabled={loading}
+                className="px-(--space-3) py-1.5 rounded-full text-xs font-medium bg-bg-card text-gris border border-blanco/[0.06] focus:border-azul/40 focus:outline-none font-[family-name:var(--font-body)]"
+              />
+            </OptionRow>
+
+            {scheduledAt && (
+              <p className="text-xs text-verde/80 font-[family-name:var(--font-body)]">
+                Programada para hoy a las {formatTimeLabel(scheduledAt)}
+              </p>
+            )}
           </div>
 
           {/* Spacer */}

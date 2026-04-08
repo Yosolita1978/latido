@@ -16,7 +16,7 @@ interface CaptureResult {
 
 export async function POST(request: Request) {
   const user = await requireUser();
-  const { raw_text, capture_mode } = await request.json();
+  const { raw_text, capture_mode, scheduled_at } = await request.json();
 
   if (!raw_text) {
     return Response.json(
@@ -146,6 +146,7 @@ General rules:
     estimated_minutes: result.estimated_minutes,
     project_id: result.project_id,
     embedding: queryEmbedding,
+    ...(scheduled_at && { scheduled_at }),
   })) as { success: boolean; task_id: string };
 
   return Response.json({

@@ -75,9 +75,41 @@ export default async function HoyPage() {
     projectsMap[p.id] = p.name;
   }
 
-  // Count unscheduled tasks to know if user has any
+  // Fetch all unscheduled tasks
   const rawTasks = await callTool("get_unscheduled_tasks", { user_id: user.id });
-  const taskCount = Array.isArray(rawTasks) ? rawTasks.length : 0;
+  const allUnscheduled: Array<{
+    id: string;
+    title: string;
+    category: string;
+    energy_level: "low" | "medium" | "high";
+    estimated_minutes: number | null;
+    project_id: string | null;
+    deferred_count: number;
+    scheduled_at: string | null;
+    created_at: string;
+  }> = Array.isArray(rawTasks) ? rawTasks : [];
+
+  const taskCount = allUnscheduled.length;
+
+  // Tasks captured today OR scheduled for today (and not yet in plan as a time block)
+  const todayDateStr = planDate;
+  const plannedTaskIds = new Set(
+    plan?.time_blocks?.map((b) => b.task_id).filter(Boolean) ?? [],
+  );
+  const capturedToday = allUnscheduled.filter((t) => {
+    if (plannedTaskIds.has(t.id)) return false;
+    const createdLocal = new Date(t.created_at);
+    const createdDateStr = `${createdLocal.getFullYear()}-${String(createdLocal.getMonth() + 1).padStart(2, "0")}-${String(createdLocal.getDate()).padStart(2, "0")}`;
+    const isCreatedToday = createdDateStr === todayDateStr;
+    const isScheduledToday =
+      t.scheduled_at &&
+      (() => {
+        const d = new Date(t.scheduled_at);
+        const s = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        return s === todayDateStr;
+      })();
+    return isCreatedToday || isScheduledToday;
+  });
 
   // Fetch calendar events (silently fail if Google not connected)
   let calendarEvents: Awaited<ReturnType<typeof getTodayEvents>> = [];
@@ -95,6 +127,7 @@ export default async function HoyPage() {
       taskCount={taskCount}
       mood={plan?.mood ?? null}
       calendarEvents={calendarEvents}
+      capturedToday={capturedToday}
     />
   );
 }

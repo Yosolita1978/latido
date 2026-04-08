@@ -58,6 +58,16 @@ interface CalendarEvent {
   is_all_day: boolean;
 }
 
+interface CapturedTask {
+  id: string;
+  title: string;
+  category: string;
+  energy_level: "low" | "medium" | "high";
+  estimated_minutes: number | null;
+  project_id: string | null;
+  scheduled_at: string | null;
+}
+
 interface DayViewProps {
   plan: Plan | null;
   projects: ProjectMap;
@@ -66,6 +76,7 @@ interface DayViewProps {
   taskCount?: number;
   mood?: string | null;
   calendarEvents?: CalendarEvent[];
+  capturedToday?: CapturedTask[];
 }
 
 const currentEnergyLabels = {
@@ -86,7 +97,7 @@ const moodOptions = [
   { level: "high", icon: "⚡", label: "Alta", color: "bg-rojo/15 text-rojo border-rojo/30" },
 ];
 
-export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { start: 8, end: 12 }, taskCount = 0, mood: initialMood = null, calendarEvents = [] }: DayViewProps) {
+export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { start: 8, end: 12 }, taskCount = 0, mood: initialMood = null, calendarEvents = [], capturedToday = [] }: DayViewProps) {
   useUserId();
   const router = useRouter();
   const [plan, setPlan] = useState(initialPlan);
@@ -231,7 +242,7 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
     const hasTasks = taskCount > 0;
 
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-12rem)] gap-(--space-8) animate-fade-slide-up">
+      <div className="flex flex-col items-center gap-(--space-6) animate-fade-slide-up py-(--space-8)">
         <Image
           src="/images/icon-white.png"
           alt="Latido"
@@ -299,6 +310,34 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
               "Generar plan para hoy"
             )}
           </Button>
+        )}
+
+        {/* Show captured tasks even before plan exists */}
+        {capturedToday.length > 0 && (
+          <div className="w-full mt-(--space-4)">
+            <span className="text-xs text-gris tracking-[0.15em] uppercase mb-(--space-3) block font-[family-name:var(--font-body)] font-medium">
+              Capturadas hoy ({capturedToday.length})
+            </span>
+            <div className="flex flex-col gap-(--space-2)">
+              {capturedToday
+                .slice()
+                .sort((a, b) => {
+                  if (a.scheduled_at && b.scheduled_at) {
+                    return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
+                  }
+                  if (a.scheduled_at) return -1;
+                  if (b.scheduled_at) return 1;
+                  return 0;
+                })
+                .map((task) => (
+                  <CapturedTaskCard
+                    key={task.id}
+                    task={task}
+                    projectName={task.project_id ? projects[task.project_id] : undefined}
+                  />
+                ))}
+            </div>
+          </div>
         )}
       </div>
     );
@@ -528,6 +567,39 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
       </div>
       )}
 
+      {/* Tareas capturadas hoy (no en el plan) */}
+      {capturedToday.length > 0 && (
+        <div className="w-full">
+          <div className="flex items-center gap-(--space-2) mb-(--space-3)">
+            <span className="text-xs text-gris tracking-[0.15em] uppercase font-[family-name:var(--font-body)] font-medium">
+              Capturadas hoy ({capturedToday.length})
+            </span>
+          </div>
+          <div className="flex flex-col gap-(--space-2)">
+            {capturedToday
+              .slice()
+              .sort((a, b) => {
+                if (a.scheduled_at && b.scheduled_at) {
+                  return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
+                }
+                if (a.scheduled_at) return -1;
+                if (b.scheduled_at) return 1;
+                return 0;
+              })
+              .map((task) => (
+                <CapturedTaskCard
+                  key={task.id}
+                  task={task}
+                  projectName={task.project_id ? projects[task.project_id] : undefined}
+                />
+              ))}
+          </div>
+          <p className="text-xs text-gris/40 text-center mt-(--space-3) font-[family-name:var(--font-body)]">
+            Estas tareas no están en el plan. Regenera para incluirlas.
+          </p>
+        </div>
+      )}
+
       {/* End-of-day reflection */}
       {completedCount > 0 && (
         <button
@@ -549,6 +621,85 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
       {toast && (
         <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
       )}
+    </div>
+  );
+}
+
+const energyDotColorsCard: Record<string, string> = {
+  low: "bg-[var(--energy-low)]",
+  medium: "bg-amarillo",
+  high: "bg-rojo",
+};
+
+function getCapturedTimeStatus(scheduledAt: string): { label: string; color: string; isNow: boolean } {
+  const now = new Date();
+  const scheduled = new Date(scheduledAt);
+  const diffMin = Math.round((scheduled.getTime() - now.getTime()) / 60000);
+
+  if (diffMin <= -5) {
+    return { label: "Atrasada", color: "text-amarillo", isNow: false };
+  }
+  if (diffMin >= -5 && diffMin <= 30) {
+    return { label: "Ahora", color: "text-verde", isNow: true };
+  }
+  if (diffMin < 60) {
+    return { label: `En ${diffMin} min`, color: "text-gris/60", isNow: false };
+  }
+  const hours = Math.floor(diffMin / 60);
+  return { label: `En ${hours}h`, color: "text-gris/60", isNow: false };
+}
+
+function CapturedTaskCard({
+  task,
+  projectName,
+}: {
+  task: {
+    id: string;
+    title: string;
+    energy_level: "low" | "medium" | "high";
+    estimated_minutes: number | null;
+    scheduled_at: string | null;
+    category: string;
+  };
+  projectName?: string;
+}) {
+  const timeStatus = task.scheduled_at ? getCapturedTimeStatus(task.scheduled_at) : null;
+  const scheduledLabel = task.scheduled_at
+    ? new Date(task.scheduled_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false })
+    : null;
+
+  return (
+    <div className={`rounded-(--radius-md) p-(--space-3) flex items-center gap-(--space-3) border ${
+      timeStatus?.isNow
+        ? "bg-bg-card border-verde/40 shadow-[0_0_16px_rgba(52,211,153,0.15)]"
+        : "bg-bg-card/60 border-blanco/[0.04]"
+    }`}>
+      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${energyDotColorsCard[task.energy_level] ?? "bg-gris/40"}`} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-blanco truncate font-[family-name:var(--font-body)]">{task.title}</p>
+        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+          {scheduledLabel && (
+            <span className="text-xs text-gris">{scheduledLabel}</span>
+          )}
+          {timeStatus && (
+            <span className={`text-xs font-medium ${timeStatus.color}`}>
+              {scheduledLabel ? "·" : ""} {timeStatus.label}
+            </span>
+          )}
+          {projectName && (
+            <>
+              <span className="text-gris/30">·</span>
+              <span className="text-xs text-azul/70">{projectName}</span>
+            </>
+          )}
+          {task.estimated_minutes && (
+            <>
+              <span className="text-gris/30">·</span>
+              <span className="text-xs text-gris/60">{task.estimated_minutes}m</span>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
