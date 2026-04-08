@@ -1,7 +1,7 @@
 # n8n Workflows — Implementation Plan
 
-**Status:** In progress — Phase 3 (code) done, Phase 1 (n8n reconfig) next
-**Last updated:** 2026-04-08
+**Status:** W1, W2, W4, W5 all built and active. W6 deferred indefinitely.
+**Last updated:** 2026-04-08 (end of session)
 
 ---
 
@@ -45,12 +45,18 @@ Automate Latido's daily loop with n8n so the user doesn't have to manually trigg
 
 | # | Name | Cron | Status |
 |---|------|------|--------|
-| W1 | Evening Plan Generation | `0 20 * * *` (8 PM PST, tomorrow's date) | 🟡 Needs reconfig |
-| W2 | Nightly Accountability | `30 21 * * *` (9:30 PM PST, today's date) | ❌ Not built yet |
+| W1 | Evening Plan Generation (Latido - Evening Plan Generation) | `0 0 20 * * *` (8 PM PST, tomorrow's date) | ✅ Built + active |
+| W2 | Nightly Accountability | `0 30 21 * * *` (9:30 PM PST, today's date) | ✅ Built + active |
 | W3 | Google Calendar Sync | every 30 min | ⏸ Skipped (events fetched live) |
-| W4 | Morning Nudge | `30 7 * * *` (7:30 AM PST) | ❌ Not built |
-| W5 | Health Monitor | `*/15 * * * *` (every 15 min) | ❌ Not built |
-| W6 | Deferred Task Escalation | `0 12 * * *` (noon PST) | ❌ Not built |
+| W4 | Morning Nudge | `0 30 7 * * *` (7:30 AM PST) | ✅ Built + active |
+| W5 | Latido Monitor (combined Health + Error handler) | 7:00, 13:00, 19:30 PST + on-error from W1/W2 | ✅ Built + active |
+| W6 | Deferred Task Escalation | `0 0 12 * * *` (noon PST) | ⏸ Deferred — wait until there's enough data to test |
+
+**Important n8n cloud notes learned this session:**
+- n8n Cloud's Schedule Trigger uses **6-field cron** (`Second Minute Hour Day Month DayOfWeek`), not standard 5-field. Always prefix with `0 ` for the seconds field to be safe.
+- n8n Cloud has a **draft/publish model**: changes live in a draft until you click "Publish". Error workflow assignments must be **published** to take effect.
+- **Manual test executions may NOT trigger error workflows** — only production (scheduled/triggered) executions do. Verify error workflows by either waiting for a real failure or using mock data on the Error Trigger node directly.
+- W5's HTTP nodes use **"Never Error" = ON** so health check failures don't recursively trigger W5's own error path.
 
 ### n8n credentials needed
 
@@ -312,11 +318,19 @@ You can store these as n8n environment variables (Settings → Variables) so wor
 
 ## Next session — pick up here
 
-Phase 3 (code) is ✅ done as of 2026-04-08. All four endpoints exist locally and the new MCP tool `get_chronic_deferrals` is registered. Next session, work from inside n8n:
+All active scope is done. W1, W2, W4, W5 are built, tested, and running on schedule. The daily Latido loop is fully automated.
 
-1. **Phase 1** — reconfigure W1 (8 PM, tomorrow's date), build W2 (9:30 PM, today's date)
-2. **Phase 2** — create the new "Latido Bot" via @BotFather, add Telegram credential in n8n, wire Telegram nodes to W1 and W2
-3. **Phase 4** — build W5 (Health Monitor) first, then W4 (Morning Nudge), then W6 (Deferred Escalation)
+**Only W6 (Deferred Escalation) remains**, and it's on hold by user decision until there's enough chronically-deferred-task data to make the noon nudge meaningful (`get_chronic_deferrals` MCP tool returns tasks with `deferred_count >= 3`, and the user is just starting to accumulate that history).
+
+**When you're ready for W6:**
+- Trigger: Schedule, `0 0 12 * * *` (noon PST, 6-field cron)
+- HTTP Request: `POST /api/cron/chronic-deferrals` with `Latido Cron Auth`, body `{user_id}` only (no plan_date)
+- Branch on `tasks.length > 0`:
+  - If empty → return [] / no message (don't spam when there's nothing to escalate)
+  - If non-empty → Format Telegram listing each task with its deferred_count
+- Send via `Latido Bot`
+- Assign `Latido Monitor` as error workflow
+- Same patterns as W1/W2/W4
 
 The handoff to Claude next time:
-> "Continue the n8n workflows plan from `docs/n8n-workflows-plan.md`. Phase 3 is done — start with Phase 1 (reconfigure W1 + build W2 in n8n)."
+> "Build W6 — Deferred Escalation per `docs/n8n-workflows-plan.md`. All other workflows are already live."
