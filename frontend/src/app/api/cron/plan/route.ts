@@ -7,6 +7,10 @@ interface ExistingPlan {
   time_blocks: unknown[];
 }
 
+interface UserSettings {
+  timezone: string;
+}
+
 /**
  * CRON endpoint for n8n to trigger morning plan generation.
  *
@@ -36,7 +40,23 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Check if a plan with tasks already exists for this date — skip if so
+    // Guard 1: user must have settings (means they completed onboarding)
+    let hasSettings = false;
+    try {
+      const settings = (await callTool("get_user_settings", { user_id })) as UserSettings | null;
+      hasSettings = !!settings?.timezone;
+    } catch {
+      hasSettings = false;
+    }
+    if (!hasSettings) {
+      return Response.json({
+        success: true,
+        skipped: true,
+        reason: "user has not completed onboarding (no settings)",
+      });
+    }
+
+    // Guard 2: skip if a plan with tasks already exists for this date
     const existing = (await callTool("get_todays_plan", {
       user_id,
       plan_date,
@@ -47,6 +67,17 @@ export async function POST(request: Request) {
         success: true,
         skipped: true,
         reason: "plan already exists",
+      });
+    }
+
+    // Guard 3: skip if there are no tasks to plan
+    const rawTasks = await callTool("get_unscheduled_tasks", { user_id });
+    const taskCount = Array.isArray(rawTasks) ? rawTasks.length : 0;
+    if (taskCount === 0) {
+      return Response.json({
+        success: true,
+        skipped: true,
+        reason: "no tasks to plan",
       });
     }
 
