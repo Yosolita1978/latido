@@ -67,6 +67,7 @@ Updates live as you complete tasks. Tap the ring to see the breakdown by compone
 
 ### Mañana (Tomorrow)
 - All pending tasks (inbox + deferred from previous days)
+- Tomorrow's Google Calendar events
 - Visual indicator for chronically deferred tasks
 
 ### Proyectos (Projects)
@@ -108,6 +109,7 @@ Updates live as you complete tasks. Tap the ring to see the breakdown by compone
 | **AI** | OpenAI (GPT-4 for agents, `text-embedding-3-small` for embeddings) |
 | **MCP server** | FastMCP (Python), 14 tools, API key middleware |
 | **Calendar** | Google Calendar API (`googleapis`, OAuth 2.0) |
+| **Automation** | n8n Cloud (CRON workflows) + Telegram Bot (notifications) |
 | **Email** | Resend (custom SMTP for Supabase Auth) |
 | **Hosting** | Vercel (frontend) + Render (MCP server) |
 
@@ -116,24 +118,37 @@ Updates live as you complete tasks. Tap the ring to see the breakdown by compone
 ## Architecture
 
 ```
-                      ┌─────────────────────┐
-                      │  Frontend (Vercel)  │
-                      │  Next.js 16 + React │
-                      └──────────┬──────────┘
-                                 │
-                ┌────────────────┼────────────────┐
-                │                │                │
-                ▼                ▼                ▼
-       ┌──────────────┐  ┌─────────────┐  ┌────────────────┐
-       │  Supabase    │  │  OpenAI API │  │  MCP Server    │
-       │  - Auth      │  │  - Chat     │  │  (Render)      │
-       │  - Postgres  │  │  - Embeds   │  │  - 14 tools    │
-       │  - pgvector  │  └─────────────┘  │  - API key auth│
-       │  - Realtime  │                   └────────┬───────┘
-       └──────────────┘                            │
-                ▲                                  │
-                └──────────────────────────────────┘
-                       (service-role queries)
+  ┌───────────────────────────────────────────────────────────┐
+  │                     USER (Mobile)                         │
+  │                milatido.vercel.app                         │
+  └────────┬──────────────────────────────────┬───────────────┘
+           │                                  │
+           ▼                                  ▼
+  ┌──────────────────┐           ┌──────────────────────────┐
+  │  Next.js Frontend│           │   Telegram Bot            │
+  │  (Vercel)        │           │   (via n8n Cloud)         │
+  │                  │           │                           │
+  │  /hoy /manana    │           │  7:30 AM → Morning plan   │
+  │  /patrones       │           │  8:00 PM → Tomorrow plan  │
+  │  /settings       │           │  9:30 PM → Reflection     │
+  │                  │           └──────────┬───────────────┘
+  │  API Routes:     │                      │
+  │  /api/agents/*   │◄─────────────────────┘
+  │  /api/cron/*     │      (HTTP POST + CRON_API_KEY)
+  │  /api/tasks/*    │
+  └────────┬─────────┘
+           │ HTTP (MCP_API_KEY)
+           ▼
+  ┌──────────────────┐      ┌────────────────────┐
+  │  MCP Server      │─────▶│  Supabase          │
+  │  (Render)        │      │  PostgreSQL         │
+  │  FastMCP :8080   │      │  + pgvector + RLS   │
+  │  14 tools        │      └────────────────────┘
+  │                  │
+  │                  │─────▶ OpenAI API (GPT-4o + embeddings)
+  └──────────────────┘
+
+  Google Calendar API ◄────── OAuth2 (server-side)
 ```
 
 **Data flow:**
@@ -141,6 +156,7 @@ Updates live as you complete tasks. Tap the ring to see the breakdown by compone
 - API routes call MCP tools via `src/lib/mcp-client.ts` (with `MCP_API_KEY` bearer token)
 - The MCP server uses the Supabase service role key to query the database
 - All `user_id` values are extracted from the authenticated session — never trusted from the client
+- n8n Cloud triggers CRON endpoints for automated daily planning, reflection, and Telegram notifications
 
 ---
 
@@ -188,27 +204,51 @@ latido/
 │   │   │   ├── ui/            ProgressArc, TimeBlock, Badge, Toast, Button
 │   │   │   └── AuthProvider.tsx
 │   │   ├── lib/
-│   │   │   ├── auth.ts          getUser(), requireUser()
-│   │   │   ├── supabase.ts      Admin client (service role)
+│   │   │   ├── auth.ts            getUser(), requireUser()
+│   │   │   ├── dates.ts           Timezone-aware date utilities
+│   │   │   ├── cron-auth.ts       CRON_API_KEY validation
+│   │   │   ├── supabase.ts        Admin client (service role)
 │   │   │   ├── supabase-browser.ts Browser client
-│   │   │   ├── mcp-client.ts    HTTP client for MCP tools
-│   │   │   ├── google-calendar.ts OAuth + calendar events
-│   │   │   ├── openai.ts        Chat + embed helpers
-│   │   │   └── enfoque.ts       Enfoque score calculation
-│   │   ├── styles/talavera.css  Design tokens
-│   │   └── proxy.ts             Auth proxy (Next.js 16)
+│   │   │   ├── mcp-client.ts      HTTP client for MCP tools
+│   │   │   ├── google-calendar.ts OAuth + calendar events (any date)
+│   │   │   ├── openai.ts          Chat + embed helpers
+│   │   │   ├── enfoque.ts         Enfoque score calculation
+│   │   │   └── agents/
+│   │   │       ├── plan.ts        generatePlan() + regeneratePlan()
+│   │   │       └── accountability.ts
+│   │   ├── styles/talavera.css    Design tokens
+│   │   └── proxy.ts               Auth proxy (Next.js 16)
 │   └── package.json
 │
-├── mcp-server/                Python FastMCP server
-│   ├── main.py                14 tools + API key middleware
+├── mcp-server/                  Python FastMCP server
+│   ├── main.py                  14 tools + API key middleware
 │   ├── requirements.txt
 │   └── seed_with_embeddings.py
 │
 ├── supabase/migrations/       SQL migrations (001 → 006)
 │
-├── CLAUDE.md                  Internal project guide (for Claude Code)
-└── README.md                  This file
+├── docs/
+│   ├── architecture.md          Full development architecture
+│   └── n8n-workflows-plan.md    n8n workflow specs and credentials
+│
+├── CLAUDE.md                    Internal project guide (for Claude Code)
+└── README.md                    This file
 ```
+
+---
+
+## n8n Automation (Daily Loop)
+
+Latido runs a fully automated daily loop via n8n Cloud + Telegram:
+
+| Time | Workflow | What happens |
+|------|----------|--------------|
+| **7:30 AM** | W4 Morning Nudge | Auto-generates today's plan if none exists. Sends Telegram with TOP 3 priorities + calendar events. |
+| **8:00 PM** | W1 Evening Plan | Generates tomorrow's plan (or regenerates if new tasks were captured). Sends plan summary + calendar. |
+| **9:30 PM** | W2 Nightly Reflection | Runs the Accountability Agent. Sends completion stats, AI reflection, and patterns learned. |
+| **3x daily** | W5 Health Monitor | Checks Vercel + Render health. Alerts on 2 consecutive failures. |
+
+Additionally, every time you capture a task, today's plan auto-regenerates in the background to include it.
 
 ---
 
@@ -338,7 +378,7 @@ All tables have RLS enabled with `auth.uid() = user_id`.
 
 The MCP server exposes 14 tools used by the frontend agents and n8n workflows:
 
-- `get_unscheduled_tasks` — inbox + deferred
+- `get_unscheduled_tasks` — inbox + deferred + scheduled (not completed)
 - `get_active_commitments` — recurring obligations + total hours/week
 - `get_user_patterns` — behavioral patterns (with optional vector similarity search)
 - `get_user_settings` — timezone, work hours, preferences
@@ -397,11 +437,15 @@ Built feature by feature in pair-programming sessions. Every change is intention
 
 ## Roadmap
 
-- [ ] n8n CRON workflows (auto-plan in the morning, auto-reflection at night)
+- [x] n8n CRON workflows (morning plan, evening plan, nightly reflection)
+- [x] Google Calendar integration (OAuth, events in plan + Telegram)
+- [x] Telegram notifications (daily loop via Latido Bot)
+- [x] Auto-regenerate plan on task capture
+- [ ] W6 Deferred Task Escalation (noon nudge for chronically deferred tasks)
 - [ ] Push notifications (browser + mobile)
 - [ ] Real-time Google Calendar sync via webhooks
 - [ ] Gmail integration (capture from starred emails)
-- [ ] Telegram bot
+- [ ] Telegram bot for capturing tasks via chat
 - [ ] Multi-language support (English)
 
 ---
