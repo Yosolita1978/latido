@@ -1,10 +1,22 @@
 import { validateCronAuth } from "@/lib/cron-auth";
 import { generatePlan } from "@/lib/agents/plan";
 import { callTool } from "@/lib/mcp-client";
+import { getTodayEvents } from "@/lib/google-calendar";
+
+interface PlanBlock {
+  start_time: string;
+  end_time: string;
+  slot_type: string;
+  plan_rank?: number;
+  task?: {
+    title: string;
+    status: string;
+  };
+}
 
 interface ExistingPlan {
   id: string;
-  time_blocks: unknown[];
+  time_blocks: PlanBlock[];
 }
 
 interface UserSettings {
@@ -41,19 +53,31 @@ export async function POST(request: Request) {
 
   try {
     // Guard 1: user must have settings (means they completed onboarding)
-    let hasSettings = false;
+    let settings: UserSettings | null = null;
     try {
-      const settings = (await callTool("get_user_settings", { user_id })) as UserSettings | null;
-      hasSettings = !!settings?.timezone;
+      settings = (await callTool("get_user_settings", { user_id })) as UserSettings | null;
     } catch {
-      hasSettings = false;
+      settings = null;
     }
-    if (!hasSettings) {
+    if (!settings?.timezone) {
       return Response.json({
         success: true,
         skipped: true,
         reason: "el usuario aún no ha completado la configuración inicial",
       });
+    }
+
+    // Fetch calendar events for the plan date
+    let calendarEvents: { summary: string; start_time: string; end_time: string; is_all_day: boolean }[] = [];
+    try {
+      calendarEvents = (await getTodayEvents(user_id, settings.timezone, plan_date)).map((ev) => ({
+        summary: ev.summary,
+        start_time: ev.start_time,
+        end_time: ev.end_time,
+        is_all_day: ev.is_all_day,
+      }));
+    } catch {
+      // Calendar fetch failed — proceed without events
     }
 
     // Guard 2: skip if a plan with tasks already exists for this date
@@ -63,10 +87,39 @@ export async function POST(request: Request) {
     })) as ExistingPlan | null;
 
     if (existing && Array.isArray(existing.time_blocks) && existing.time_blocks.length > 0) {
+      const taskBlocks = existing.time_blocks
+        .filter((b) => b.slot_type !== "break" && b.task)
+        .map((b) => ({
+          title: b.task!.title,
+          start_time: b.start_time,
+          end_time: b.end_time,
+          plan_rank: b.plan_rank ?? 0,
+          status: b.task!.status,
+        }));
+
+      const top3 = taskBlocks
+        .filter((b) => b.plan_rank >= 1 && b.plan_rank <= 3)
+        .sort((a, b) => a.plan_rank - b.plan_rank);
+
       return Response.json({
         success: true,
         skipped: true,
         reason: "ya existe un plan para esta fecha",
+        plan_summary: {
+          total_tasks: taskBlocks.length,
+          top3: top3.map((b) => ({
+            title: b.title,
+            start_time: b.start_time,
+            end_time: b.end_time,
+          })),
+          all_tasks: taskBlocks.map((b) => ({
+            title: b.title,
+            start_time: b.start_time,
+            end_time: b.end_time,
+            status: b.status,
+          })),
+          calendar_events: calendarEvents,
+        },
       });
     }
 
@@ -82,7 +135,7 @@ export async function POST(request: Request) {
     }
 
     const result = await generatePlan(user_id, plan_date);
-    return Response.json(result);
+    return Response.json({ ...result, calendar_events: calendarEvents });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("CRON plan error:", message);

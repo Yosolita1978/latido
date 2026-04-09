@@ -2,6 +2,7 @@ import { callTool } from "@/lib/mcp-client";
 import { requireUser } from "@/lib/auth";
 import { DayView } from "@/components/hoy/DayView";
 import { getTodayEvents } from "@/lib/google-calendar";
+import { getTodayDate } from "@/lib/dates";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -37,17 +38,12 @@ interface Plan {
   mood: string | null;
 }
 
-function getTodayDate(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
 interface UserSettings {
   timezone: string;
 }
 
 export default async function HoyPage() {
   const user = await requireUser();
-  const planDate = getTodayDate();
 
   // Check if user has settings — if not, redirect to onboarding
   let settings: UserSettings | null = null;
@@ -60,6 +56,8 @@ export default async function HoyPage() {
   if (!settings) {
     redirect("/settings?onboarding=1");
   }
+
+  const planDate = getTodayDate(settings.timezone);
 
   const [plan, rawProjects] = await Promise.all([
     callTool("get_todays_plan", {

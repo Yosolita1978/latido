@@ -140,25 +140,25 @@ export async function isConnected(userId: string): Promise<{ connected: boolean;
 }
 
 /**
- * Fetches today's calendar events for the given user, in the given timezone.
+ * Fetches calendar events for a specific date (defaults to today).
+ * @param targetDate — "YYYY-MM-DD" in the user's timezone. If omitted, uses today.
  */
-export async function getTodayEvents(userId: string, timezone: string): Promise<CalendarEvent[]> {
+export async function getTodayEvents(userId: string, timezone: string, targetDate?: string): Promise<CalendarEvent[]> {
   const client = await getAuthorizedClient(userId);
   if (!client) return [];
 
-  // Today's calendar date in the user's timezone (YYYY-MM-DD)
   const dateFmt = new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   });
-  const todayStr = dateFmt.format(new Date());
+  const dateStr = targetDate ?? dateFmt.format(new Date());
 
-  // Use a wide UTC window (yesterday→day after tomorrow) and filter by user's tz date
-  const now = new Date();
-  const timeMin = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-  const timeMax = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
+  // Build a UTC window around the target date
+  const dayStart = new Date(dateStr + "T00:00:00");
+  const timeMin = new Date(dayStart.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const timeMax = new Date(dayStart.getTime() + 48 * 60 * 60 * 1000).toISOString();
 
   const calendar = google.calendar({ version: "v3", auth: client });
   const response = await calendar.events.list({
@@ -185,11 +185,11 @@ export async function getTodayEvents(userId: string, timezone: string): Promise<
       if (!startISO) return false;
       // For all-day events, event.start.date is "YYYY-MM-DD" in calendar TZ
       if (event.start?.date) {
-        return event.start.date === todayStr;
+        return event.start.date === dateStr;
       }
       // For timed events, format the start in the user's tz and compare
       const eventDateInTz = dateFmt.format(new Date(startISO));
-      return eventDateInTz === todayStr;
+      return eventDateInTz === dateStr;
     })
     .map((event): CalendarEvent => {
       const startISO = event.start?.dateTime ?? event.start?.date ?? "";

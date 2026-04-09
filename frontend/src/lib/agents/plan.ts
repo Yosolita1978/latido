@@ -255,3 +255,48 @@ Rules:
     tasks_scheduled: result.time_blocks.filter((b) => b.slot_type !== "break").length,
   };
 }
+
+interface ExistingPlanBlock {
+  task_id: string;
+  task?: { status: string };
+}
+
+interface ExistingPlan {
+  id: string;
+  time_blocks: ExistingPlanBlock[];
+}
+
+/**
+ * Regenerates today's plan to include newly captured tasks.
+ *
+ * 1. If no plan exists yet, skip (user hasn't started planning).
+ * 2. Reset "scheduled" tasks from the current plan to "inbox"
+ *    so they're picked up by get_unscheduled_tasks again.
+ *    Completed and deferred tasks are left as-is.
+ * 3. Call generatePlan to create a fresh plan with all available tasks.
+ */
+export async function regeneratePlan(
+  user_id: string,
+  plan_date: string,
+): Promise<GeneratePlanResult | null> {
+  // Check if a plan exists — only regenerate if user already has one
+  const existing = (await callTool("get_todays_plan", {
+    user_id,
+    plan_date,
+  })) as ExistingPlan | null;
+
+  if (!existing || !existing.time_blocks || existing.time_blocks.length === 0) {
+    return null; // No plan yet — don't auto-create one
+  }
+
+  // Reset "scheduled" tasks back to "inbox" so generatePlan picks them up
+  const scheduledTaskIds = existing.time_blocks
+    .filter((b) => b.task_id && b.task?.status === "scheduled")
+    .map((b) => b.task_id);
+
+  for (const taskId of scheduledTaskIds) {
+    await callTool("update_task_status", { task_id: taskId, status: "inbox" });
+  }
+
+  return generatePlan(user_id, plan_date);
+}

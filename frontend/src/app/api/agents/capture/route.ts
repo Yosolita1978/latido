@@ -1,6 +1,9 @@
+import { after } from "next/server";
 import { chat, embed, parseJSON } from "@/lib/openai";
 import { callTool } from "@/lib/mcp-client";
 import { requireUser } from "@/lib/auth";
+import { getTodayDate } from "@/lib/dates";
+import { regeneratePlan } from "@/lib/agents/plan";
 
 interface CaptureResult {
   type: "task" | "activity" | "energy";
@@ -106,9 +109,12 @@ General rules:
   const result = parseJSON<CaptureResult>(response);
 
   // Step 4: Route based on type
+  // Fetch user settings for timezone-aware date
+  const settings = (await callTool("get_user_settings", { user_id })) as { timezone: string } | null;
+  const today = getTodayDate(settings?.timezone ?? "America/Los_Angeles");
+
   if (result.type === "energy") {
     // Store energy level on today's plan
-    const today = new Date().toISOString().split("T")[0];
     const { createAdminClient } = await import("@/lib/supabase");
     const db = createAdminClient();
     await db
@@ -148,6 +154,15 @@ General rules:
     embedding: queryEmbedding,
     ...(scheduled_at && { scheduled_at }),
   })) as { success: boolean; task_id: string };
+
+  // Auto-regenerate today's plan in the background so new task is included
+  after(async () => {
+    try {
+      await regeneratePlan(user_id, today);
+    } catch (err) {
+      console.error("Auto-regenerate plan failed:", err);
+    }
+  });
 
   return Response.json({
     success: true,

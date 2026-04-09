@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase";
 import { ReflectionView } from "@/components/reflexion/ReflectionView";
 import { PatronesView } from "@/components/reflexion/PatronesView";
+import { getTodayDate } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -15,17 +16,19 @@ interface Plan {
   }>;
 }
 
-function getTodayDate(): string {
-  return new Date().toISOString().split("T")[0];
+interface UserSettings {
+  timezone: string;
 }
 
 export default async function PatronesPage() {
   const user = await requireUser();
+  const settings = (await callTool("get_user_settings", { user_id: user.id })) as UserSettings | null;
+  const planDate = getTodayDate(settings?.timezone ?? "America/Los_Angeles");
 
   const [plan, patterns] = await Promise.all([
     callTool("get_todays_plan", {
       user_id: user.id,
-      plan_date: getTodayDate(),
+      plan_date: planDate,
     }) as Promise<Plan | null>,
     createAdminClient()
       .from("user_patterns")
