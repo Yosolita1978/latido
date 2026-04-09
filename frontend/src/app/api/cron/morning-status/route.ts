@@ -1,6 +1,7 @@
 import { validateCronAuth } from "@/lib/cron-auth";
 import { callTool } from "@/lib/mcp-client";
 import { getTodayEvents } from "@/lib/google-calendar";
+import { generatePlan } from "@/lib/agents/plan";
 
 interface EnrichedTimeBlock {
   task_id?: string;
@@ -78,8 +79,37 @@ export async function POST(request: Request) {
       // Calendar fetch failed — proceed without events
     }
 
-    // Empty / missing plan — return the no-plan shape
+    // No plan yet — auto-generate one if there are tasks
     if (blocks.length === 0) {
+      const rawTasks = await callTool("get_unscheduled_tasks", { user_id });
+      const taskCount = Array.isArray(rawTasks) ? rawTasks.length : 0;
+
+      if (taskCount > 0) {
+        // Generate a plan, then re-fetch it to return the full data
+        await generatePlan(user_id, plan_date);
+        const freshPlan = (await callTool("get_todays_plan", {
+          user_id,
+          plan_date,
+        })) as DailyPlan | null;
+
+        const freshBlocks = freshPlan?.time_blocks ?? [];
+        const freshTop3 = freshBlocks
+          .filter((b) => b.plan_rank > 0 && b.task?.title)
+          .sort((a, b) => a.plan_rank - b.plan_rank)
+          .slice(0, 3)
+          .map((b) => b.task!.title);
+
+        return Response.json({
+          has_plan: true,
+          task_count: freshBlocks.filter((b) => !!b.task_id).length,
+          top3: freshTop3,
+          current_energy: null,
+          calendar_events: calendarEvents,
+          auto_generated: true,
+        });
+      }
+
+      // No tasks at all — nothing to plan
       return Response.json({
         has_plan: false,
         task_count: 0,

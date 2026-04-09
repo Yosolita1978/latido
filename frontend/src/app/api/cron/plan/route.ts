@@ -1,5 +1,5 @@
 import { validateCronAuth } from "@/lib/cron-auth";
-import { generatePlan } from "@/lib/agents/plan";
+import { generatePlan, regeneratePlan } from "@/lib/agents/plan";
 import { callTool } from "@/lib/mcp-client";
 import { getTodayEvents } from "@/lib/google-calendar";
 
@@ -87,6 +87,19 @@ export async function POST(request: Request) {
     })) as ExistingPlan | null;
 
     if (existing && Array.isArray(existing.time_blocks) && existing.time_blocks.length > 0) {
+      // Plan exists — check if there are unscheduled tasks not in the plan
+      const rawTasks = await callTool("get_unscheduled_tasks", { user_id });
+      const unscheduledCount = Array.isArray(rawTasks) ? rawTasks.length : 0;
+
+      if (unscheduledCount > 0) {
+        // Regenerate to include new tasks
+        const result = await regeneratePlan(user_id, plan_date);
+        if (result) {
+          return Response.json({ ...result, calendar_events: calendarEvents, regenerated: true });
+        }
+      }
+
+      // No new tasks — return existing plan summary
       const taskBlocks = existing.time_blocks
         .filter((b) => b.slot_type !== "break" && b.task)
         .map((b) => ({
@@ -103,8 +116,6 @@ export async function POST(request: Request) {
 
       return Response.json({
         success: true,
-        skipped: true,
-        reason: "ya existe un plan para esta fecha",
         plan_summary: {
           total_tasks: taskBlocks.length,
           top3: top3.map((b) => ({
@@ -123,7 +134,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // Guard 3: skip if there are no tasks to plan
+    // No plan yet — check if there are tasks to plan
     const rawTasks = await callTool("get_unscheduled_tasks", { user_id });
     const taskCount = Array.isArray(rawTasks) ? rawTasks.length : 0;
     if (taskCount === 0) {
@@ -131,6 +142,7 @@ export async function POST(request: Request) {
         success: true,
         skipped: true,
         reason: "no hay tareas para planificar",
+        calendar_events: calendarEvents,
       });
     }
 
