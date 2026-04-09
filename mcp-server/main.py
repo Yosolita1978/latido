@@ -50,12 +50,13 @@ async def health_endpoint(request: Request) -> JSONResponse:
 # ---------------------------------------------------------------------------
 @mcp.tool()
 def get_unscheduled_tasks(user_id: str) -> list[dict]:
-    """Get all tasks with status 'inbox' or 'deferred', ordered by due date and deferred count."""
+    """Get all tasks available for planning: inbox, deferred, or scheduled-but-never-completed."""
     result = (
         db.table("tasks")
         .select("id, title, category, energy_level, estimated_minutes, project_id, due_date, deferred_count, scheduled_at, created_at")
         .eq("user_id", user_id)
-        .in_("status", ["inbox", "deferred"])
+        .in_("status", ["inbox", "deferred", "scheduled"])
+        .is_("completed_at", "null")
         .order("due_date", nullsfirst=False)
         .order("deferred_count", desc=True)
         .execute()
