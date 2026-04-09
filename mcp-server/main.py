@@ -167,10 +167,12 @@ def write_daily_plan(
     )
     plan_id = result.data[0]["id"]
 
-    # Update each referenced task to 'scheduled'
+    # Update each referenced task to 'scheduled' — but never overwrite completed or deferred
     task_ids = [b["task_id"] for b in valid_blocks if b.get("task_id")]
     for task_id in task_ids:
-        db.table("tasks").update({"status": "scheduled"}).eq("id", task_id).execute()
+        task = db.table("tasks").select("status").eq("id", task_id).single().execute()
+        if task.data and task.data["status"] not in ("completed", "deferred"):
+            db.table("tasks").update({"status": "scheduled"}).eq("id", task_id).execute()
 
     return {"success": True, "plan_id": plan_id}
 
@@ -329,7 +331,7 @@ def get_todays_plan(user_id: str, plan_date: str) -> dict | None:
     if task_ids:
         tasks_result = (
             db.table("tasks")
-            .select("id, title, status, actual_minutes, category, energy_level, project_id")
+            .select("id, title, status, actual_minutes, category, energy_level, project_id, completed_at, estimated_minutes, deferred_count")
             .in_("id", task_ids)
             .execute()
         )
