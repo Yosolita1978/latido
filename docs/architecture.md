@@ -9,7 +9,7 @@ Latido is an AI-powered daily planner for solopreneurs. It runs a closed feedbac
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        USER (Mobile)                            │
-│                   milatido.vercel.app                            │
+│                   latido.day                            │
 └──────────┬──────────────────────────────────────┬───────────────┘
            │                                      │
            ▼                                      ▼

@@ -199,7 +199,7 @@ ${data.completion_rate}% completado · ${data.tasks_completed} hechas · ${data.
 10. **W5 — Health Monitor** (build first per spec)
     - Trigger: Cron `*/15 * * * *`
     - HTTP Request 1: `GET https://latido-ooag.onrender.com/health` (timeout 10s)
-    - HTTP Request 2: `GET https://milatido.vercel.app/api/health` (timeout 10s)
+    - HTTP Request 2: `GET https://latido.day/api/health` (timeout 10s)
     - Use n8n static workflow data to track 2-consecutive-failures counter
     - Send Telegram alert only on 2nd failure: "⚠️ Latido infrastructure down: ..."
     - Reset counter on success
@@ -295,7 +295,7 @@ When configuring workflows, these are the values to use:
 
 | Variable | Value |
 |----------|-------|
-| `LATIDO_URL` | `https://milatido.vercel.app` |
+| `LATIDO_URL` | `https://latido.day` |
 | `LATIDO_USER_ID` | `070731f7-9641-4d14-a5eb-23980f99ab4d` |
 | `MCP_SERVER_URL` | `https://latido-ooag.onrender.com` |
 | `CRON_API_KEY` | (in your local `.env.local` and Vercel env vars) |

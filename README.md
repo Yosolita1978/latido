@@ -6,7 +6,7 @@ Latido is an AI-powered daily planner for solopreneurs. It uses three coordinate
 
 Built with a Talavera-inspired dark theme. Mobile-first. Spanish-first.
 
-🌐 **Live:** https://milatido.vercel.app
+🌐 **Live:** https://latido.day
 
 ---
 
@@ -120,7 +120,7 @@ Updates live as you complete tasks. Tap the ring to see the breakdown by compone
 ```
   ┌───────────────────────────────────────────────────────────┐
   │                     USER (Mobile)                         │
-  │                milatido.vercel.app                         │
+  │                   latido.day                                │
   └────────┬──────────────────────────────────┬───────────────┘
            │                                  │
            ▼                                  ▼

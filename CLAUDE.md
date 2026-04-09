@@ -12,7 +12,7 @@ AI-powered daily planner for solopreneurs. Three AI agents (Capture, Day Archite
 - **AI:** OpenAI (GPT for agents, text-embedding for embeddings)
 - **MCP Server:** FastMCP (Python) with 14 tools, runs on port 8080, protected by API key middleware
 - **Automation:** n8n Cloud (CRON workflows) + Telegram Bot (notifications)
-- **Hosting:** Vercel (frontend) + Render (MCP server) — deployed and live at milatido.vercel.app
+- **Hosting:** Vercel (frontend) + Render (MCP server) — deployed and live at latido.day
 
 ## Security
 
