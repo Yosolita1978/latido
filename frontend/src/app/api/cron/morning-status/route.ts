@@ -1,5 +1,6 @@
 import { validateCronAuth } from "@/lib/cron-auth";
 import { callTool } from "@/lib/mcp-client";
+import { getTodayEvents } from "@/lib/google-calendar";
 
 interface EnrichedTimeBlock {
   task_id?: string;
@@ -55,12 +56,27 @@ export async function POST(request: Request) {
   }
 
   try {
-    const plan = (await callTool("get_todays_plan", {
-      user_id,
-      plan_date,
-    })) as DailyPlan | null;
+    // Fetch plan, settings, in parallel
+    const [plan, settings] = await Promise.all([
+      callTool("get_todays_plan", { user_id, plan_date }) as Promise<DailyPlan | null>,
+      callTool("get_user_settings", { user_id }) as Promise<UserSettings | null>,
+    ]);
 
     const blocks = plan?.time_blocks ?? [];
+    const timezone = settings?.timezone ?? "America/Los_Angeles";
+
+    // Fetch calendar events for the plan date
+    let calendarEvents: { summary: string; start_time: string; end_time: string; is_all_day: boolean }[] = [];
+    try {
+      calendarEvents = (await getTodayEvents(user_id, timezone, plan_date)).map((ev) => ({
+        summary: ev.summary,
+        start_time: ev.start_time,
+        end_time: ev.end_time,
+        is_all_day: ev.is_all_day,
+      }));
+    } catch {
+      // Calendar fetch failed — proceed without events
+    }
 
     // Empty / missing plan — return the no-plan shape
     if (blocks.length === 0) {
@@ -69,6 +85,7 @@ export async function POST(request: Request) {
         task_count: 0,
         top3: [],
         current_energy: null,
+        calendar_events: calendarEvents,
       });
     }
 
@@ -81,34 +98,23 @@ export async function POST(request: Request) {
 
     const task_count = blocks.filter((b) => !!b.task_id).length;
 
-    // current_energy: find the block whose time window contains "now" in the
-    // user's timezone. If no settings or no match, return null.
+    // current_energy: find the block whose time window contains "now"
     let current_energy: "alta" | "media" | "baja" | null = null;
-    try {
-      const settings = (await callTool("get_user_settings", {
-        user_id,
-      })) as UserSettings | null;
-
-      if (settings?.timezone) {
-        const now = nowHHMMInTimezone(settings.timezone);
-        const currentBlock = blocks.find(
-          (b) =>
-            b.task?.energy_level &&
-            b.start_time <= now &&
-            now < b.end_time,
-        );
-        current_energy = currentBlock?.task?.energy_level ?? null;
-      }
-    } catch {
-      // settings missing or MCP error — degrade gracefully, current_energy stays null
-      current_energy = null;
-    }
+    const now = nowHHMMInTimezone(timezone);
+    const currentBlock = blocks.find(
+      (b) =>
+        b.task?.energy_level &&
+        b.start_time <= now &&
+        now < b.end_time,
+    );
+    current_energy = currentBlock?.task?.energy_level ?? null;
 
     return Response.json({
       has_plan: true,
       task_count,
       top3,
       current_energy,
+      calendar_events: calendarEvents,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
