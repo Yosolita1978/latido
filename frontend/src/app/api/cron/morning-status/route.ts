@@ -11,6 +11,7 @@ interface EnrichedTimeBlock {
   task?: {
     id: string;
     title: string;
+    status: string;
     energy_level: "alta" | "media" | "baja";
   };
 }
@@ -93,7 +94,10 @@ export async function POST(request: Request) {
         })) as DailyPlan | null;
 
         const freshBlocks = freshPlan?.time_blocks ?? [];
-        const freshTop3 = freshBlocks
+        const freshActive = freshBlocks.filter((b) =>
+          b.task_id && b.task && b.task.status !== "completed" && b.task.status !== "deferred"
+        );
+        const freshTop3 = freshActive
           .filter((b) => b.plan_rank > 0 && b.task?.title)
           .sort((a, b) => a.plan_rank - b.plan_rank)
           .slice(0, 3)
@@ -101,7 +105,7 @@ export async function POST(request: Request) {
 
         return Response.json({
           has_plan: true,
-          task_count: freshBlocks.filter((b) => !!b.task_id).length,
+          task_count: freshActive.length,
           top3: freshTop3,
           current_energy: null,
           calendar_events: calendarEvents,
@@ -119,14 +123,18 @@ export async function POST(request: Request) {
       });
     }
 
-    // TOP 3: blocks with plan_rank > 0, sorted ascending, first 3 titles
-    const top3 = blocks
+    // Only count active tasks (not completed or deferred)
+    const activeBlocks = blocks.filter((b) =>
+      b.task_id && b.task && b.task.status !== "completed" && b.task.status !== "deferred"
+    );
+
+    const top3 = activeBlocks
       .filter((b) => b.plan_rank > 0 && b.task?.title)
       .sort((a, b) => a.plan_rank - b.plan_rank)
       .slice(0, 3)
       .map((b) => b.task!.title);
 
-    const task_count = blocks.filter((b) => !!b.task_id).length;
+    const task_count = activeBlocks.length;
 
     // current_energy: find the block whose time window contains "now"
     let current_energy: "alta" | "media" | "baja" | null = null;
