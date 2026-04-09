@@ -599,9 +599,26 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
                 />
               ))}
           </div>
-          <p className="text-xs text-gris/40 text-center mt-(--space-3) font-[family-name:var(--font-body)]">
-            Estas tareas no están en el plan. Regenera para incluirlas.
+          <p className="text-sm text-gris/60 text-center mt-(--space-3) font-[family-name:var(--font-body)]">
+            Estas tareas no están en el plan aún
           </p>
+          <button
+            onClick={handleGeneratePlan}
+            disabled={generating}
+            className="w-full mt-(--space-2) min-h-[44px] rounded-(--radius-md) bg-azul/10 text-azul text-sm font-semibold transition-all active:bg-azul/20 border border-azul/15"
+          >
+            {generating ? (
+              <span className="flex items-center justify-center gap-(--space-2)">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Regenerando plan...
+              </span>
+            ) : (
+              "Incluir en el plan"
+            )}
+          </button>
         </div>
       )}
 

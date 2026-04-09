@@ -40,7 +40,24 @@ const slotLabels: Record<string, string> = {
   maintenance: "Mantenimiento",
 };
 
-const timePills = [5, 15, 30, 45, 60];
+function getTimePills(estimatedMinutes: number): number[] {
+  if (estimatedMinutes > 240) return [60, 120, 240, 480, 960];
+  if (estimatedMinutes > 60) return [15, 30, 60, 120, 240];
+  return [5, 15, 30, 45, 60];
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes >= 480) {
+    const days = Math.round(minutes / 480);
+    return `${days}d`;
+  }
+  if (minutes >= 60) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m > 0 ? `${h}h${m}m` : `${h}h`;
+  }
+  return `${minutes}m`;
+}
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
@@ -93,6 +110,8 @@ export function TimeBlock({
 }: TimeBlockProps) {
   const [expanded, setExpanded] = useState(false);
   const [showTimePills, setShowTimePills] = useState(false);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customMinutes, setCustomMinutes] = useState("");
   const [animating, setAnimating] = useState<"complete" | "defer" | null>(null);
   const [hidden, setHidden] = useState(false);
   const [deferMsg, setDeferMsg] = useState<string | null>(null);
@@ -234,29 +253,72 @@ export function TimeBlock({
           {/* Time pills (shown after tapping Hecho) */}
           {showTimePills && (
             <div className="flex flex-col gap-(--space-3)">
-              <div className="flex items-center gap-(--space-2) flex-wrap">
-                <span className="text-xs text-gris">¿Cuánto tomó?</span>
-                {timePills.map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => handleComplete(t)}
-                    className={`
-                      px-3 py-1.5 rounded-full text-xs font-medium transition-all
-                      ${t === minutes
-                        ? "bg-verde text-bg-primary"
-                        : "bg-bg-card-elevated text-gris border border-blanco/[0.06] hover:border-blanco/10"
+              {showCustomInput ? (
+                <div className="flex items-center gap-(--space-2)">
+                  <span className="text-xs text-gris">Minutos:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="4800"
+                    value={customMinutes}
+                    onChange={(e) => setCustomMinutes(e.target.value)}
+                    autoFocus
+                    className="w-20 px-3 py-1.5 rounded-full text-xs font-medium bg-bg-card-elevated text-blanco border border-blanco/[0.06] text-center"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const val = parseInt(customMinutes);
+                        if (val > 0) handleComplete(val);
                       }
-                    `}
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      const val = parseInt(customMinutes);
+                      if (val > 0) handleComplete(val);
+                    }}
+                    disabled={!customMinutes || parseInt(customMinutes) <= 0}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-verde text-bg-primary disabled:opacity-40"
                   >
-                    {t}m
+                    OK
                   </button>
-                ))}
-              </div>
+                  <button
+                    onClick={() => setShowCustomInput(false)}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-bg-card-elevated text-gris border border-blanco/[0.06]"
+                  >
+                    Atrás
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-(--space-2) flex-wrap">
+                  <span className="text-xs text-gris">¿Cuánto tomó?</span>
+                  {getTimePills(minutes).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => handleComplete(t)}
+                      className={`
+                        px-3 py-1.5 rounded-full text-xs font-medium transition-all
+                        ${t === minutes
+                          ? "bg-verde text-bg-primary"
+                          : "bg-bg-card-elevated text-gris border border-blanco/[0.06] hover:border-blanco/10"
+                        }
+                      `}
+                    >
+                      {formatDuration(t)}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setShowCustomInput(true)}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-bg-card-elevated text-gris border border-blanco/[0.06] hover:border-blanco/10"
+                  >
+                    Otro
+                  </button>
+                </div>
+              )}
               <button
                 onClick={() => handleComplete(minutes)}
                 className="w-full min-h-[44px] rounded-(--radius-md) bg-verde/15 text-verde text-sm font-semibold transition-all active:bg-verde/25 border border-verde/20"
               >
-                Completar{minutes > 0 ? ` (${minutes}m como planeado)` : ""}
+                Completar{minutes > 0 ? ` (${formatDuration(minutes)} como planeado)` : ""}
               </button>
             </div>
           )}

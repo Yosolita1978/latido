@@ -258,6 +258,10 @@ Rules:
 
 interface ExistingPlanBlock {
   task_id: string;
+  start_time: string;
+  end_time: string;
+  slot_type: string;
+  plan_rank?: number;
   task?: { status: string };
 }
 
@@ -268,28 +272,32 @@ interface ExistingPlan {
 
 /**
  * Regenerates today's plan to include newly captured tasks.
+ * Preserves completed task blocks so Enfoque score isn't lost.
  *
  * 1. If no plan exists yet, skip (user hasn't started planning).
- * 2. Reset "scheduled" tasks from the current plan to "inbox"
- *    so they're picked up by get_unscheduled_tasks again.
- *    Completed and deferred tasks are left as-is.
- * 3. Call generatePlan to create a fresh plan with all available tasks.
+ * 2. Save completed blocks aside.
+ * 3. Reset "scheduled" tasks to "inbox" for re-planning.
+ * 4. Generate a new plan (picks up inbox + new tasks, not completed/deferred).
+ * 5. Merge completed blocks back into the new plan.
  */
 export async function regeneratePlan(
   user_id: string,
   plan_date: string,
 ): Promise<GeneratePlanResult | null> {
-  // Check if a plan exists — only regenerate if user already has one
   const existing = (await callTool("get_todays_plan", {
     user_id,
     plan_date,
   })) as ExistingPlan | null;
 
   if (!existing || !existing.time_blocks || existing.time_blocks.length === 0) {
-    return null; // No plan yet — don't auto-create one
+    return null;
   }
 
-  // Reset "scheduled" tasks back to "inbox" so generatePlan picks them up
+  // Partition: keep completed blocks, reset scheduled to inbox
+  const completedBlocks = existing.time_blocks.filter(
+    (b) => b.task_id && b.task?.status === "completed",
+  );
+
   const scheduledTaskIds = existing.time_blocks
     .filter((b) => b.task_id && b.task?.status === "scheduled")
     .map((b) => b.task_id);
@@ -298,5 +306,39 @@ export async function regeneratePlan(
     await callTool("update_task_status", { task_id: taskId, status: "inbox" });
   }
 
-  return generatePlan(user_id, plan_date);
+  // Generate new plan with available tasks (completed tasks excluded automatically)
+  const result = await generatePlan(user_id, plan_date);
+
+  // Merge completed blocks back into the new plan
+  if (completedBlocks.length > 0) {
+    const freshPlan = (await callTool("get_todays_plan", {
+      user_id,
+      plan_date,
+    })) as ExistingPlan | null;
+
+    if (freshPlan?.time_blocks) {
+      const completedTaskIds = new Set(completedBlocks.map((b) => b.task_id));
+      const newBlocks = freshPlan.time_blocks.filter(
+        (b) => !completedTaskIds.has(b.task_id),
+      );
+      const merged = [...completedBlocks, ...newBlocks].sort(
+        (a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time),
+      );
+
+      await callTool("write_daily_plan", {
+        user_id,
+        plan_date,
+        time_blocks: merged.map((b) => ({
+          task_id: b.task_id,
+          start_time: b.start_time,
+          end_time: b.end_time,
+          slot_type: b.slot_type,
+          plan_rank: b.plan_rank ?? 0,
+        })),
+        total_planned_minutes: result.total_planned_minutes,
+      });
+    }
+  }
+
+  return result;
 }
