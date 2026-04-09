@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import uvicorn
 from dotenv import load_dotenv
@@ -365,10 +365,17 @@ def get_projects(user_id: str) -> list[dict]:
 # Tool 12: defer_to_tomorrow
 # ---------------------------------------------------------------------------
 @mcp.tool()
-def defer_to_tomorrow(user_id: str, task_id: str, plan_date: str) -> dict:
-    """Defer a task: remove from today's plan and optionally append to tomorrow's plan as unslotted."""
+def defer_to_tomorrow(user_id: str, task_id: str, plan_date: str, today_date: str | None = None) -> dict:
+    """Defer a task: remove from today's plan and optionally append to tomorrow's plan as unslotted.
+    today_date: the user's local date (YYYY-MM-DD). Falls back to the day before plan_date."""
     # 1. Remove task from today's plan
-    today = date.today().isoformat()
+    if today_date:
+        today = today_date
+    else:
+        # Derive today from plan_date (tomorrow) minus 1 day
+        d = date.fromisoformat(plan_date) - timedelta(days=1)
+        today = d.isoformat()
+
     today_plan = (
         db.table("daily_plans")
         .select("id, time_blocks, total_planned_minutes")

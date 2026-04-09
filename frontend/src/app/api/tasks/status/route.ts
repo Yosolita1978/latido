@@ -1,5 +1,10 @@
 import { callTool } from "@/lib/mcp-client";
 import { requireUser } from "@/lib/auth";
+import { getTodayDate, getTomorrowDate } from "@/lib/dates";
+
+interface UserSettings {
+  timezone: string;
+}
 
 export async function POST(request: Request) {
   const user = await requireUser();
@@ -22,14 +27,16 @@ export async function POST(request: Request) {
 
   // If deferring, also handle the defer-to-tomorrow logic
   if (status === "deferred") {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowDate = tomorrow.toISOString().split("T")[0];
+    const settings = (await callTool("get_user_settings", { user_id: user.id })) as UserSettings | null;
+    const timezone = settings?.timezone ?? "America/Los_Angeles";
+    const todayDate = getTodayDate(timezone);
+    const tomorrowDate = getTomorrowDate(timezone);
 
     await callTool("defer_to_tomorrow", {
       user_id: user.id,
       task_id,
       plan_date: tomorrowDate,
+      today_date: todayDate,
     });
   }
 

@@ -109,6 +109,11 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
   const [savingMood, setSavingMood] = useState(false);
   const [reflectionOpen, setReflectionOpen] = useState(false);
 
+  // Sync plan state when server re-renders (router.refresh)
+  useEffect(() => {
+    setPlan(initialPlan);
+  }, [initialPlan]);
+
   useEffect(() => {
     if (plan?.time_blocks) {
       const statuses: Record<string, string> = {};
