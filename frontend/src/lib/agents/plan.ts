@@ -306,50 +306,10 @@ export async function regeneratePlan(
     await callTool("update_task_status", { task_id: taskId, status: "inbox" });
   }
 
-  // Remember which tasks the user explicitly deferred — don't let generatePlan undo that
-  const deferredTaskIds = new Set(
-    existing.time_blocks
-      .filter((b) => b.task_id && b.task?.status === "deferred")
-      .map((b) => b.task_id),
-  );
-
-  // Generate new plan with available tasks (completed tasks excluded automatically)
+  // Generate new plan with available tasks (completed tasks excluded automatically).
+  // Deferred tasks are included via get_unscheduled_tasks — the AI decides whether
+  // to schedule them based on priority and deferred_count.
   const result = await generatePlan(user_id, plan_date);
-
-  // After generation, remove any deferred tasks that got re-scheduled and fix their status
-  if (deferredTaskIds.size > 0) {
-    const freshAfterGen = (await callTool("get_todays_plan", {
-      user_id,
-      plan_date,
-    })) as ExistingPlan | null;
-
-    if (freshAfterGen?.time_blocks) {
-      const reScheduledDeferred = freshAfterGen.time_blocks
-        .filter((b) => b.task_id && deferredTaskIds.has(b.task_id));
-
-      for (const block of reScheduledDeferred) {
-        await callTool("update_task_status", { task_id: block.task_id, status: "deferred" });
-      }
-
-      if (reScheduledDeferred.length > 0) {
-        const cleanedBlocks = freshAfterGen.time_blocks.filter(
-          (b) => !b.task_id || !deferredTaskIds.has(b.task_id),
-        );
-        await callTool("write_daily_plan", {
-          user_id,
-          plan_date,
-          time_blocks: cleanedBlocks.map((b) => ({
-            task_id: b.task_id,
-            start_time: b.start_time,
-            end_time: b.end_time,
-            slot_type: b.slot_type,
-            plan_rank: b.plan_rank ?? 0,
-          })),
-          total_planned_minutes: result.total_planned_minutes,
-        });
-      }
-    }
-  }
 
   // Merge completed blocks back into the new plan
   if (completedBlocks.length > 0) {

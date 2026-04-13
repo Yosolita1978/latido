@@ -3,6 +3,7 @@ import { callTool } from "@/lib/mcp-client";
 import { requireUser } from "@/lib/auth";
 import { getTomorrowDate } from "@/lib/dates";
 import { getTodayEvents } from "@/lib/google-calendar";
+import { DeferredTaskCard } from "@/components/manana/DeferredTaskCard";
 
 export const dynamic = "force-dynamic";
 
@@ -126,29 +127,17 @@ export default async function MananaPage() {
           </span>
           <div className="flex flex-col gap-(--space-2) stagger-children">
             {deferredTasks.map((task) => (
-              <div key={task.id} className="bg-bg-card rounded-(--radius-md) p-(--space-3) flex items-center gap-(--space-3) border border-amarillo/[0.06]">
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${energyDotColors[task.energy_level] ?? "bg-amarillo"}`} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-blanco truncate">{task.title}</p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-xs text-gris">
-                      {task.project_id ? projectsMap[task.project_id] : task.category}
-                    </span>
-                    {task.estimated_minutes && (
-                      <>
-                        <span className="text-gris/30">·</span>
-                        <span className="text-xs text-gris/60">{task.estimated_minutes}m</span>
-                      </>
-                    )}
-                    {task.deferred_count > 1 && (
-                      <>
-                        <span className="text-gris/30">·</span>
-                        <span className="text-xs text-amarillo/60">{task.deferred_count}x diferida</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <DeferredTaskCard
+                key={task.id}
+                taskId={task.id}
+                title={task.title}
+                projectName={task.project_id ? projectsMap[task.project_id] : undefined}
+                category={task.category}
+                energyLevel={task.energy_level}
+                estimatedMinutes={task.estimated_minutes}
+                deferredCount={task.deferred_count}
+                timezone={settings?.timezone ?? "America/Los_Angeles"}
+              />
             ))}
           </div>
         </div>
