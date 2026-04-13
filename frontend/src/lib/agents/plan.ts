@@ -102,7 +102,7 @@ export async function generatePlan(
   // Fetch calendar events (if Google is connected); silently fail if not
   let calendarEvents: Awaited<ReturnType<typeof getTodayEvents>> = [];
   try {
-    calendarEvents = await getTodayEvents(user_id, settings.timezone);
+    calendarEvents = await getTodayEvents(user_id, settings.timezone, plan_date);
   } catch {
     // Calendar fetch failed — proceed without events
   }
