@@ -45,10 +45,10 @@ Automate Latido's daily loop with n8n so the user doesn't have to manually trigg
 
 | # | Name | Cron | Status |
 |---|------|------|--------|
-| W1 | Evening Plan Generation (Latido - Evening Plan Generation) | `0 0 20 * * *` (8 PM PST, tomorrow's date) | ✅ Built + active |
-| W2 | Nightly Accountability | `0 30 21 * * *` (9:30 PM PST, today's date) | ✅ Built + active |
+| W1 | Evening Plan Generation (Latido - Evening Plan Generation) | `0 0 20 * * 1-5` (8 PM PST, Mon-Fri, tomorrow's date) | ✅ Built + active |
+| W2 | Nightly Accountability | `0 30 21 * * 1-5` (9:30 PM PST, Mon-Fri, today's date) | ✅ Built + active |
 | W3 | Google Calendar Sync | every 30 min | ⏸ Skipped (events fetched live) |
-| W4 | Morning Nudge | `0 30 7 * * *` (7:30 AM PST) | ✅ Built + active |
+| W4 | Morning Nudge | `0 30 7 * * 1-5` (7:30 AM PST, Mon-Fri) | ✅ Built + active |
 | W5 | Latido Monitor (combined Health + Error handler) | 7:00, 13:00, 19:30 PST + on-error from W1/W2 | ✅ Built + active |
 | W6 | Deferred Task Escalation | `0 0 12 * * *` (noon PST) | ⏸ Deferred — wait until there's enough data to test |
 
@@ -124,7 +124,7 @@ ${data.tasks_scheduled} tareas · ${Math.round(data.total_planned_minutes / 60)}
 
 "${data.reasoning}"
 
-→ Abre Latido para ver tu día completo`;
+→ [Abre Latido](https://latido.day/api/auto-login?token=${process.env.AUTO_LOGIN_TOKEN || ''}&next=/manana)`;
 
      return [{ json: { text } }];
      ```
@@ -156,7 +156,7 @@ ${data.completion_rate}% completado · ${data.tasks_completed} hechas · ${data.
      text += `\n\nMañana:\n${data.tomorrow_priorities.map((p, i) => `${i + 1}. ${p}`).join("\n")}`;
    }
 
-   text += "\n\nDescansa bien 🌙";
+   text += `\n\nDescansa bien 🌙\n\n→ [Ver tu día](https://latido.day/api/auto-login?token=${process.env.AUTO_LOGIN_TOKEN || ''}&next=/hoy)`;
 
    return [{ json: { text } }];
    ```
@@ -238,7 +238,7 @@ Tu TOP 3:
 
 Energía ahora: {alta/media/baja}
 
-→ Abre Latido
+→ [Abre Latido](https://latido.day/api/auto-login?token=AUTO_LOGIN_TOKEN&next=/hoy)
 ```
 
 ### Evening Plan (W1)
@@ -249,7 +249,7 @@ Energía ahora: {alta/media/baja}
 
 "{reasoning}"
 
-→ Abre Latido para ver tu día completo
+→ [Abre Latido](https://latido.day/api/auto-login?token=AUTO_LOGIN_TOKEN&next=/manana)
 ```
 
 ### Nightly Reflection (W2)
@@ -268,6 +268,8 @@ Mañana:
 3. {priority}
 
 Descansa bien 🌙
+
+→ [Ver tu día](https://latido.day/api/auto-login?token=AUTO_LOGIN_TOKEN&next=/hoy)
 ```
 
 ### Deferred Escalation (W6)
@@ -301,6 +303,7 @@ When configuring workflows, these are the values to use:
 | `CRON_API_KEY` | (in your local `.env.local` and Vercel env vars) |
 | `TELEGRAM_BOT_TOKEN` | from @BotFather |
 | `TELEGRAM_CHAT_ID` | from @userinfobot |
+| `AUTO_LOGIN_TOKEN` | Secret token for Telegram auto-login links (also set in Vercel env vars) |
 
 You can store these as n8n environment variables (Settings → Variables) so workflows reference them by name instead of hardcoding.
 
