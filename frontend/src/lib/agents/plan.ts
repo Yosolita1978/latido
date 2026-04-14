@@ -42,6 +42,7 @@ interface Task {
   project_id: string | null;
   due_date: string | null;
   deferred_count: number;
+  scheduled_at: string | null;
 }
 
 interface Project {
@@ -143,7 +144,10 @@ export async function generatePlan(
   const tasksFormatted = tasks
     .map((t) => {
       const proj = t.project_id ? projectsById.get(t.project_id) : null;
-      return `- [${t.id}] "${t.title}" | category: ${t.category} | energy: ${t.energy_level} | est: ${t.estimated_minutes ?? "unknown"}min | deferred: ${t.deferred_count}x${t.due_date ? ` | due: ${t.due_date}` : ""}${proj ? ` | project: ${proj.name}` : ""}`;
+      const scheduledTime = t.scheduled_at
+        ? ` | scheduled_at: ${new Date(t.scheduled_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: settings.timezone })}`
+        : "";
+      return `- [${t.id}] "${t.title}" | category: ${t.category} | energy: ${t.energy_level} | est: ${t.estimated_minutes ?? "unknown"}min | deferred: ${t.deferred_count}x${t.due_date ? ` | due: ${t.due_date}` : ""}${proj ? ` | project: ${proj.name}` : ""}${scheduledTime}`;
     })
     .join("\n");
 
@@ -219,6 +223,7 @@ Return ONLY valid JSON:
 
 Rules:
 - ONLY schedule tasks from the AVAILABLE TASKS list using their exact UUID.
+- If a task has a scheduled_at time, you MUST schedule it at that exact time. The user chose that time explicitly — do not move it.
 - NEVER schedule a task during a CALENDAR EVENT TODAY time slot. Calendar events are immutable meetings — work around them.
 - Respect the available_minutes ceiling. Do NOT overplan.
 - If patterns indicate the user completes fewer tasks than planned, plan fewer tasks.

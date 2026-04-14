@@ -242,6 +242,87 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
     }
   }
 
+  // New day state — plan was auto-generated (by n8n) but user hasn't started their day yet
+  const hasPlan = plan && plan.time_blocks && plan.time_blocks.length > 0;
+  if (hasPlan && !currentMood) {
+    const planTaskCount = plan.time_blocks.filter((b) => b.slot_type !== "break" && b.task).length;
+    return (
+      <div className="flex flex-col items-center gap-(--space-6) animate-fade-slide-up py-(--space-8)">
+        <Image
+          src="/images/icon-white.png"
+          alt="Latido"
+          width={80}
+          height={80}
+          className="opacity-60"
+          priority
+        />
+
+        <div className="text-center">
+          <p className="text-blanco font-[family-name:var(--font-heading)] text-lg italic">
+            Buenos días
+          </p>
+          <p className="text-gris text-sm mt-1 font-[family-name:var(--font-body)]">
+            Tu plan está listo con {planTaskCount} {planTaskCount === 1 ? "tarea" : "tareas"}.
+          </p>
+          <p className="text-gris text-sm mt-2 font-[family-name:var(--font-body)]">
+            ¿Cómo te sientes hoy?
+          </p>
+        </div>
+
+        <div className="flex gap-(--space-3)">
+          {moodOptions.map((opt) => (
+            <button
+              key={opt.level}
+              onClick={() => handleMoodSelect(opt.level)}
+              disabled={savingMood}
+              className={`flex flex-col items-center gap-1 px-(--space-4) py-(--space-3) rounded-(--radius-lg) border-2 transition-all active:scale-95 bg-bg-card text-gris border-blanco/[0.06] hover:border-blanco/15`}
+            >
+              <span className="text-lg">{opt.icon}</span>
+              <span className="text-xs font-[family-name:var(--font-body)]">{opt.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Calendar preview */}
+        {calendarEvents.length > 0 && (
+          <div className="w-full mt-(--space-2)">
+            <div className="flex items-center gap-(--space-2) mb-(--space-3)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-gris/60">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <span className="text-xs text-gris tracking-[0.15em] uppercase font-[family-name:var(--font-body)] font-medium">
+                En tu calendario
+              </span>
+            </div>
+            <div className="flex flex-col gap-(--space-2)">
+              {calendarEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="bg-bg-card/60 rounded-(--radius-md) p-(--space-3) flex items-center gap-(--space-3) border border-blanco/[0.04]"
+                >
+                  <div className="w-1 h-8 rounded-full bg-azul/40 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-blanco/90 truncate font-[family-name:var(--font-body)]">
+                      {event.summary}
+                    </p>
+                    <span className="text-xs text-gris/60 font-[family-name:var(--font-body)]">
+                      {event.is_all_day
+                        ? "Todo el día"
+                        : `${event.start_time} – ${event.end_time}`}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // No plan yet (or plan exists with zero blocks — happens after only logging mood)
   if (!plan || !plan.time_blocks || plan.time_blocks.length === 0) {
     const hasTasks = taskCount > 0;
@@ -309,10 +390,10 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Generando plan...
+                Planificando...
               </span>
             ) : (
-              "Generar plan para hoy"
+              "Planificar mi día"
             )}
           </Button>
         )}
@@ -485,10 +566,10 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Regenerando plan...
+                  Planificando...
                 </span>
               ) : (
-                "Regenerar plan"
+                "Planificar de nuevo"
               )}
             </Button>
           )}
@@ -613,10 +694,10 @@ export function DayView({ plan: initialPlan, projects, planDate, peakWindow = { 
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Regenerando plan...
+                Actualizando plan...
               </span>
             ) : (
-              "Incluir en el plan"
+              "Actualizar mi plan"
             )}
           </button>
         </div>
